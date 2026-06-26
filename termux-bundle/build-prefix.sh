@@ -38,39 +38,41 @@ rm -rf termux.apk termux_extract bootstrap.zip
 echo "=== Setup proot helper ==="
 
 # Helper: run a command in the prefix using proot
+# Bind /usr from HOST so we have access to python3 (Termux bootstrap doesn't include python binary)
 proot_run() {
-    command proot -0 -r "$PREFIX_DIR" -b /dev -b /proc -b /sys "$@"
+    command proot -0 -r "$PREFIX_DIR" -b /dev -b /proc -b /sys -b /usr -b /bin "$@"
 }
 
-# Verify bootstrap python works
-echo "Verifying bootstrap python..."
-proot_run /bin/python3 --version || {
-    echo "ERROR: bootstrap python not found"
+# Verify python is reachable
+echo "Verifying python..."
+proot_run /usr/bin/python3 --version || {
+    echo "ERROR: python3 not found (host /usr/bin/python3 should be bound)"
     exit 1
 }
 
 echo "=== Installing Python Dependencies ==="
 
 # Install Python dependencies into the prefix's site-packages
-# Use bootstrap python (not host python) — proot isolates to Termux rootfs
-proot_run /bin/python3 -m pip install --upgrade pip 2>&1 | tail -3 || true
+# Use HOST python via proot (host /usr is bound into prefix by proot_run helper)
+PYTHON=/usr/bin/python3
+proot_run "$PYTHON" -m pip install --upgrade pip 2>&1 | tail -3 || true
 
 # Install build dependencies first (for Rust compilation)
-proot_run /bin/python3 -m pip install --no-cache-dir \
+proot_run "$PYTHON" -m pip install --no-cache-dir \
     --target "$PIP_TARGET_DIR" \
     maturin setuptools-rust wheel 2>&1 | tail -5 || true
 
 # Install pinned dependencies
 if [ -f /build/pin/pip.txt ]; then
     echo "Installing from pip.txt..."
-    proot_run /bin/python3 -m pip install --no-cache-dir \
+    proot_run "$PYTHON" -m pip install --no-cache-dir \
         --target "$PIP_TARGET_DIR" \
         -r /build/pin/pip.txt 2>&1 | tail -5 || true
 fi
 
 if [ -f /build/pin/python.txt ]; then
     echo "Installing from python.txt..."
-    proot_run /bin/python3 -m pip install --no-cache-dir \
+    proot_run "$PYTHON" -m pip install --no-cache-dir \
         --target "$PIP_TARGET_DIR" \
         -r /build/pin/python.txt 2>&1 | tail -5 || true
 fi
@@ -85,7 +87,7 @@ git clone --depth 1 --branch "v${RUSLAN_VERSION}" \
     https://github.com/valldun1/ruslan.git /tmp/ruslan
 
 # Install into prefix site-packages
-proot_run /bin/python3 -m pip install --no-cache-dir \
+proot_run "$PYTHON" -m pip install --no-cache-dir \
     --target "$PIP_TARGET_DIR" \
     -e /tmp/ruslan 2>&1 | tail -5 || true
 
