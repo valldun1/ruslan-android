@@ -27,7 +27,7 @@
     </style>
     
     <!-- Theme with ActionBar -->
-    <style name="Theme.Ruslan" parent="Theme.Material3.Dark">
+    <style name="Theme.Ruslan.WithActionBar" parent="Theme.Material3.Dark">
         <item name="colorPrimary">@color/accent_cyan</item>
         <item name="colorPrimaryDark">@color/accent_cyan_dark</item>
         <item name="colorAccent">@color/accent_cyan</item>
