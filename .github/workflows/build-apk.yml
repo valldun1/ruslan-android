@@ -34,7 +34,7 @@ jobs:
             -e OUTPUT_DIR=/output \
             --privileged \
             ubuntu:22.04 bash -c "
-              apt-get update && apt-get install -y qemu-user-static binfmt-support zstd tar wget unzip curl python3 git
+              apt-get update && apt-get install -y qemu-user-static binfmt-support proot zstd tar wget unzip curl python3 git
               update-binfmts --enable qemu-aarch64
               /build/build-prefix.sh
             "
