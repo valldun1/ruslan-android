@@ -179,7 +179,7 @@ object TermuxBootstrap {
         }
     }
     
-    private fun copyConfigTemplates(context: Context, prefixDir: String) {
+    private fun copyConfigTemplates(context: Context, prefixDir: File) {
         val homeDir = File(prefixDir, "home")
         homeDir.mkdirs()
         

@@ -54,7 +54,6 @@ class GatewayService : Service() {
 
     private fun startGateway() {
         isRunning = true
-        Companion.isRunning = true
 
         // Acquire wake lock
         if (!wakeLock.isHeld) {
@@ -161,7 +160,6 @@ class GatewayService : Service() {
 
     private fun stopGateway() {
         isRunning = false
-        Companion.isRunning = false
 
         try {
             gatewayProcess?.destroy()
