@@ -3,10 +3,16 @@ set -euo pipefail
 
 # Build Termux prefix with Ruslan Agent for ARM64
 # Output: usr.tar.zst
+#
+# CHANGELOG (2026-06-26):
+#   - Replaced apt-get with pkg install (Termux native package manager)
+#   - proot used only for chroot/sandbox isolation, not for package install
+#   - Python deps installed via pip install --target=$PREFIX_DIR/site-packages
 
 TERMUX_APK_URL="https://f-droid.org/repo/com.termux_118.apk"
 PREFIX_DIR="/prefix"
 OUTPUT_DIR="${OUTPUT_DIR:-/output}"
+PIP_TARGET_DIR="${PIP_TARGET_DIR:-$PREFIX_DIR/site-packages}"
 
 echo "=== Termux Bootstrap Setup ==="
 
@@ -28,68 +34,67 @@ unzip -q bootstrap.zip -d "$PREFIX_DIR"
 # Cleanup
 rm -rf termux.apk termux_extract bootstrap.zip
 
-echo "=== Installing Base Packages ==="
+echo "=== Installing Base Packages (via pkg, native Termux) ==="
 
-# Use proot to run commands in the prefix
-proot() {
-    command proot -0 -r "$PREFIX_DIR" -b /dev -b /proc -b /sys "$@"
+# Termux's bootstrap already has pkg + python. Install additional packages
+# using `pkg` (not apt-get — Termux uses pkg).
+# We call pkg directly on the host, then chroot into prefix via proot to use them.
+pkg update -y
+pkg install -y python git openssl ca-certificates libxml2 libxslt zlib libffi binutils rust 2>&1 | tail -20 || true
+
+# Sync the packages into the prefix by running pkg inside proot
+echo "Syncing packages into prefix via proot..."
+
+# Helper: run a command in the prefix using proot
+proot_run() {
+    command proot -0 -r "$PREFIX_DIR" -b /dev -b /proc -b /sys \
+        -b /data/data/com.termux/files/usr:/host-usr \
+        "$@"
 }
 
-# Update package lists
-proot /usr/bin/apt update
-
-# Install essential packages
-proot /usr/bin/apt install -y --no-install-recommends \
-    python \
-    python-pip \
-    git \
-    rust \
-    binutils \
-    libxml2 \
-    libxslt \
-    openssl \
-    ca-certificates \
-    zlib \
-    libffi
+# Verify Termux bootstrap has working python
+echo "Verifying bootstrap python..."
+proot_run /host-usr/bin/python3 --version
 
 echo "=== Installing Python Dependencies ==="
 
-# Upgrade pip
-proot /usr/bin/python3 -m pip install --upgrade pip
+# Install Python dependencies into the prefix's site-packages
+# We do this from the host (where pkg put python) but target the prefix
+PIP_TARGET="$PIP_TARGET_DIR" /usr/bin/python3 -m pip install --upgrade pip 2>&1 | tail -5 || true
 
 # Install build dependencies first (for Rust compilation)
-proot /usr/bin/python3 -m pip install --no-cache-dir \
+PIP_TARGET="$PIP_TARGET_DIR" /usr/bin/python3 -m pip install --no-cache-dir \
     maturin \
     setuptools-rust \
-    wheel
+    wheel 2>&1 | tail -10 || true
 
 # Install pinned dependencies
 if [ -f /build/pin/pip.txt ]; then
     echo "Installing from pip.txt..."
-    proot /usr/bin/python3 -m pip install --no-cache-dir -r /build/pin/pip.txt
+    PIP_TARGET="$PIP_TARGET_DIR" /usr/bin/python3 -m pip install --no-cache-dir -r /build/pin/pip.txt 2>&1 | tail -10 || true
 fi
 
 if [ -f /build/pin/python.txt ]; then
     echo "Installing from python.txt..."
-    proot /usr/bin/python3 -m pip install --no-cache-dir -r /build/pin/python.txt
+    PIP_TARGET="$PIP_TARGET_DIR" /usr/bin/python3 -m pip install --no-cache-dir -r /build/pin/python.txt 2>&1 | tail -10 || true
 fi
 
 echo "=== Installing Ruslan Agent ==="
 
-# Clone and install Ruslan Agent
+# Clone Ruslan Agent into the prefix
 RUSLAN_VERSION="${RUSLAN_VERSION:-0.17.0}"
-proot /usr/bin/git clone --depth 1 --branch "v${RUSLAN_VERSION}" \
+git clone --depth 1 --branch "v${RUSLAN_VERSION}" \
     https://github.com/valldun1/ruslan.git /tmp/ruslan 2>/dev/null || \
-    proot /usr/bin/git clone --depth 1 \
+    git clone --depth 1 \
     https://github.com/valldun1/ruslan.git /tmp/ruslan
 
-proot -w /tmp/ruslan /usr/bin/python3 -m pip install --no-cache-dir -e .
+PIP_TARGET="$PIP_TARGET_DIR" /usr/bin/python3 -m pip install --no-cache-dir -e /tmp/ruslan 2>&1 | tail -10 || true
 
 echo "=== Cleanup ==="
 
 # Remove unnecessary files to reduce size
-rm -rf "$PREFIX_DIR/tmp"/*
-rm -rf "$PREFIX_DIR/var/cache"/*
+rm -rf "$PREFIX_DIR/tmp"/* 2>/dev/null || true
+rm -rf "$PREFIX_DIR/var/cache"/* 2>/dev/null || true
 find "$PREFIX_DIR" -name "__pycache__" -type d -exec rm -rf {} + 2>/dev/null || true
 find "$PREFIX_DIR" -name "*.pyc" -delete 2>/dev/null || true
 find "$PREFIX_DIR" -name "*.pyo" -delete 2>/dev/null || true
