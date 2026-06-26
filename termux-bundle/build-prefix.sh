@@ -4,11 +4,11 @@ set -euo pipefail
 # Build Termux prefix with Ruslan Agent for ARM64
 # Output: usr.tar.zst
 #
-# CHANGELOG (2026-06-26 v3):
-#   - Removed all `pkg install` calls (pkg unavailable in Docker ubuntu:22.04)
-#   - Use python from Termux bootstrap via proot (no host python required)
-#   - git clone ruslan-agent on HOST (x86), then copy to prefix
-#   - Removed strip on ARM64 binaries (cross-arch strip is unsafe)
+# CHANGELOG (2026-06-26 v4):
+#   - Removed ALL proot calls — ptrace/execve fail in Docker ubuntu:22.04
+#   - Use HOST python directly to install pip packages into prefix site-packages
+#   - Skip Rust/maturin (they require native build, too slow for CI)
+#   - Output is raw Termux bootstrap (python, bash) + Python wheels from pip
 
 TERMUX_APK_URL="https://f-droid.org/repo/com.termux_118.apk"
 PREFIX_DIR="/prefix"
@@ -35,61 +35,65 @@ unzip -q bootstrap.zip -d "$PREFIX_DIR"
 # Cleanup
 rm -rf termux.apk termux_extract bootstrap.zip
 
-echo "=== Setup proot helper ==="
+echo "=== Verifying Python (host) ==="
 
-# Helper: run a command in the prefix using proot
-# Bind /usr from HOST so we have access to python3 (Termux bootstrap doesn't include python binary)
-proot_run() {
-    command proot -0 -r "$PREFIX_DIR" -b /dev -b /proc -b /sys -b /usr -b /bin "$@"
-}
-
-# Verify python is reachable
-echo "Verifying python..."
-proot_run /usr/bin/python3 --version || {
-    echo "ERROR: python3 not found (host /usr/bin/python3 should be bound)"
+# Use host python3 (x86_64) for pip install — proot won't work in this Docker
+PYTHON=$(which python3)
+if [ -z "$PYTHON" ]; then
+    echo "ERROR: python3 not found on host"
     exit 1
-}
+fi
+echo "Using python: $PYTHON"
+$PYTHON --version
 
-echo "=== Installing Python Dependencies ==="
+echo "=== Installing Python Dependencies (host pip) ==="
 
-# Install Python dependencies into the prefix's site-packages
-# Use HOST python via proot (host /usr is bound into prefix by proot_run helper)
-PYTHON=/usr/bin/python3
-proot_run "$PYTHON" -m pip install --upgrade pip 2>&1 | tail -3 || true
+# Install pure-Python wheels into prefix's site-packages.
+# We use --platform=linux_aarch64 to get ARM64 wheels, --only-binary=:all: to skip sdist builds.
+# This works for pure-Python packages. Native packages (cryptography, pillow) need other handling.
+$PYTHON -m pip install --upgrade pip 2>&1 | tail -3 || true
 
-# Install build dependencies first (for Rust compilation)
-proot_run "$PYTHON" -m pip install --no-cache-dir \
-    --target "$PIP_TARGET_DIR" \
-    maturin setuptools-rust wheel 2>&1 | tail -5 || true
+# Install build deps for Rust if any
+$PYTHON -m pip install --no-cache-dir --target "$PIP_TARGET_DIR" \
+    --platform=manylinux2014_aarch64 --platform=manylinux_2_17_aarch64 \
+    --only-binary=:all: \
+    --implementation cp --python-version 3.10 \
+    maturin setuptools-rust wheel 2>&1 | tail -5 || echo "WARN: maturin not installed"
 
-# Install pinned dependencies
+# Install pinned dependencies (pure-Python only — native ones handled on-device)
 if [ -f /build/pin/pip.txt ]; then
     echo "Installing from pip.txt..."
-    proot_run "$PYTHON" -m pip install --no-cache-dir \
-        --target "$PIP_TARGET_DIR" \
-        -r /build/pin/pip.txt 2>&1 | tail -5 || true
+    $PYTHON -m pip install --no-cache-dir --target "$PIP_TARGET_DIR" \
+        --platform=manylinux2014_aarch64 --platform=manylinux_2_17_aarch64 \
+        --only-binary=:all: \
+        --implementation cp --python-version 3.10 \
+        -r /build/pin/pip.txt 2>&1 | tail -5 || echo "WARN: pip.txt failed"
 fi
 
 if [ -f /build/pin/python.txt ]; then
     echo "Installing from python.txt..."
-    proot_run "$PYTHON" -m pip install --no-cache-dir \
-        --target "$PIP_TARGET_DIR" \
-        -r /build/pin/python.txt 2>&1 | tail -5 || true
+    $PYTHON -m pip install --no-cache-dir --target "$PIP_TARGET_DIR" \
+        --platform=manylinux2014_aarch64 --platform=manylinux_2_17_aarch64 \
+        --only-binary=:all: \
+        --implementation cp --python-version 3.10 \
+        -r /build/pin/python.txt 2>&1 | tail -5 || echo "WARN: python.txt failed"
 fi
 
 echo "=== Installing Ruslan Agent ==="
 
-# Clone Ruslan Agent on HOST (x86 faster, no qemu overhead) then copy to prefix
+# Clone Ruslan Agent (host x86 is fine, then install as package)
 RUSLAN_VERSION="${RUSLAN_VERSION:-0.17.0}"
 git clone --depth 1 --branch "v${RUSLAN_VERSION}" \
     https://github.com/valldun1/ruslan.git /tmp/ruslan 2>/dev/null || \
     git clone --depth 1 \
     https://github.com/valldun1/ruslan.git /tmp/ruslan
 
-# Install into prefix site-packages
-proot_run "$PYTHON" -m pip install --no-cache-dir \
-    --target "$PIP_TARGET_DIR" \
-    -e /tmp/ruslan 2>&1 | tail -5 || true
+# Install ruslan into prefix
+$PYTHON -m pip install --no-cache-dir --target "$PIP_TARGET_DIR" \
+    --platform=manylinux2014_aarch64 --platform=manylinux_2_17_aarch64 \
+    --only-binary=:all: \
+    --implementation cp --python-version 3.10 \
+    -e /tmp/ruslan 2>&1 | tail -5 || echo "WARN: ruslan install failed"
 
 echo "=== Cleanup ==="
 
@@ -99,9 +103,6 @@ rm -rf "$PREFIX_DIR/var/cache"/* 2>/dev/null || true
 find "$PREFIX_DIR" -name "__pycache__" -type d -exec rm -rf {} + 2>/dev/null || true
 find "$PREFIX_DIR" -name "*.pyc" -delete 2>/dev/null || true
 find "$PREFIX_DIR" -name "*.pyo" -delete 2>/dev/null || true
-
-# Note: skip strip on cross-arch binaries (aarch64 binaries stripped from x86 host
-# can break. Do strip in release pipeline or on-device if needed.)
 
 echo "=== Creating Archive ==="
 
