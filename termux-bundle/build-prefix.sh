@@ -4,23 +4,29 @@ set -euo pipefail
 # Build Termux prefix with Ruslan Agent for ARM64
 # Output: usr.tar.zst
 
-TERMUX_BOOTSTRAP_URL="https://github.com/termux/termux-app/releases/download/v0.118.1/bootstrap-aarch64-25.zip"
+TERMUX_APK_URL="https://f-droid.org/repo/com.termux_118.apk"
 PREFIX_DIR="/prefix"
 OUTPUT_DIR="${OUTPUT_DIR:-/output}"
 
 echo "=== Termux Bootstrap Setup ==="
 
-# Download bootstrap if not present
-if [ ! -f "bootstrap-aarch64-25.zip" ]; then
-    echo "Downloading Termux bootstrap..."
-    wget -q "$TERMUX_BOOTSTRAP_URL" -O bootstrap-aarch64-25.zip
-fi
+# Download Termux APK and extract bootstrap
+echo "Downloading Termux APK..."
+curl -sL -o termux.apk "$TERMUX_APK_URL"
+echo "Extracting bootstrap from APK..."
+unzip -q termux.apk -d termux_extract
+
+# Extract bootstrap zip embedded in libtermux-bootstrap.so
+tail -c +1393 termux_extract/lib/arm64-v8a/libtermux-bootstrap.so > bootstrap.zip
 
 # Extract bootstrap
-echo "Extracting bootstrap..."
+echo "Extracting prefix..."
 rm -rf "$PREFIX_DIR"
 mkdir -p "$PREFIX_DIR"
-unzip -q bootstrap-aarch64-25.zip -d "$PREFIX_DIR"
+unzip -q bootstrap.zip -d "$PREFIX_DIR"
+
+# Cleanup
+rm -rf termux.apk termux_extract bootstrap.zip
 
 echo "=== Installing Base Packages ==="
 

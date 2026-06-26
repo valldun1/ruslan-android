@@ -74,3 +74,4 @@ dist/
 # Logs
 logs/
 *.log
+*.zip
