@@ -28,11 +28,12 @@ jobs:
 
       - name: Build Termux prefix
         run: |
+          mkdir -p android-app/app/src/main/assets
           docker run --rm --platform linux/arm64 \
             -v "$PWD/termux-bundle:/build" \
             -v "$PWD/android-app/app/src/main/assets:/output" \
             -e OUTPUT_DIR=/output \
-            --privileged \
+            -u "$(id -u):$(id -g)" \
             ubuntu:22.04 bash -c "
               apt-get update && apt-get install -y qemu-user-static binfmt-support proot zstd tar wget unzip curl python3 git
               update-binfmts --enable qemu-aarch64
