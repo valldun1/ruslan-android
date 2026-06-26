@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Base theme -->
+    <style name="Theme.Ruslan" parent="Theme.Material3.Dark.NoActionBar">
+        <!-- Primary colors -->
+        <item name="colorPrimary">@color/accent_cyan</item>
+        <item name="colorPrimaryDark">@color/accent_cyan_dark</item>
+        <item name="colorAccent">@color/accent_cyan</item>
+        
+        <!-- Background -->
+        <item name="android:colorBackground">@color/bg_primary</item>
+        <item name="colorSurface">@color/bg_card</item>
+        <item name="colorSurfaceVariant">@color/bg_surface</item>
+        
+        <!-- Text -->
+        <item name="android:textColorPrimary">@color/text_primary</item>
+        <item name="android:textColorSecondary">@color/text_secondary</item>
+        
+        <!-- Status bar -->
+        <item name="android:statusBarColor">@color/bg_primary</item>
+        <item name="android:navigationBarColor">@color/bg_primary</item>
+        
+        <!-- Components -->
+        <item name="materialButtonStyle">@style/Widget.Ruslan.Button</item>
+        <item name="materialCardViewStyle">@style/Widget.Ruslan.Card</item>
+        <item name="switchStyle">@style/Widget.Ruslan.Switch</item>
+    </style>
+    
+    <!-- Theme with ActionBar -->
+    <style name="Theme.Ruslan" parent="Theme.Material3.Dark">
+        <item name="colorPrimary">@color/accent_cyan</item>
+        <item name="colorPrimaryDark">@color/accent_cyan_dark</item>
+        <item name="colorAccent">@color/accent_cyan</item>
+        <item name="android:colorBackground">@color/bg_primary</item>
+        <item name="colorSurface">@color/bg_card</item>
+        <item name="android:statusBarColor">@color/bg_primary</item>
+        <item name="android:navigationBarColor">@color/bg_primary</item>
+    </style>
+    
+    <!-- No ActionBar variant -->
+    <style name="Theme.Ruslan.NoActionBar">
+        <item name="windowActionBar">false</item>
+        <item name="windowNoTitle">true</item>
+    </style>
+    
+    <!-- Button styles -->
+    <style name="Widget.Ruslan.Button" parent="Widget.Material3.Button">
+        <item name="android:backgroundTint">@color/btn_primary_bg</item>
+        <item name="android:textColor">@color/btn_primary_text</item>
+        <item name="cornerRadius">12dp</item>
+        <item name="android:paddingTop">12dp</item>
+        <item name="android:paddingBottom">12dp</item>
+    </style>
+    
+    <style name="Widget.Ruslan.Button.Secondary">
+        <item name="android:backgroundTint">@color/btn_secondary_bg</item>
+        <item name="android:textColor">@color/btn_secondary_text</item>
+        <item name="strokeColor">@color/btn_secondary_stroke</item>
+        <item name="strokeWidth">1dp</item>
+    </style>
+    
+    <!-- Card style -->
+    <style name="Widget.Ruslan.Card" parent="Widget.Material3.CardView.Elevated">
+        <item name="cardBackgroundColor">@color/bg_card</item>
+        <item name="cardCornerRadius">16dp</item>
+        <item name="cardElevation">4dp</item>
+    </style>
+    
+    <!-- Switch style -->
+    <style name="Widget.Ruslan.Switch" parent="Widget.Material3.CompoundButton.MaterialSwitch">
+        <item name="thumbTint">@color/accent_cyan</item>
+        <item name="trackTint">@color/bg_surface</item>
+    </style>
+</resources>

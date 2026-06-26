@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Backgrounds -->
+    <color name="bg_primary">#0a0e1a</color>
+    <color name="bg_card">#161b22</color>
+    <color name="bg_surface">#1c2128</color>
+    <color name="bg_input">#21262d</color>
+    
+    <!-- Accent colors -->
+    <color name="accent_cyan">#00d4ff</color>
+    <color name="accent_cyan_dark">#00a8cc</color>
+    <color name="accent_cyan_light">#4de8ff</color>
+    
+    <!-- Text colors -->
+    <color name="text_primary">#ffffff</color>
+    <color name="text_secondary">#8b949e</color>
+    <color name="text_tertiary">#6e7681</color>
+    
+    <!-- Status colors -->
+    <color name="success_green">#3fb950</color>
+    <color name="error_red">#ff4757</color>
+    <color name="warning_purple">#8b5cf6</color>
+    <color name="offline_gray">#6e7681</color>
+    
+    <!-- Button colors -->
+    <color name="btn_primary_bg">#00d4ff</color>
+    <color name="btn_primary_text">#0a0e1a</color>
+    <color name="btn_secondary_bg">#21262d</color>
+    <color name="btn_secondary_text">#ffffff</color>
+    <color name="btn_secondary_stroke">#30363d</color>
+    
+    <!-- Notification -->
+    <color name="notification_bg">#161b22</color>
+</resources>

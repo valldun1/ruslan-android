@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <PreferenceCategory
+        android:title="МОДЕЛЬ"
+        app:iconSpaceReserved="false">
+
+        <Preference
+            android:key="model_provider"
+            android:title="@string/model_provider"
+            android:summary="@string/model_provider_desc"
+            android:icon="@drawable/ic_model"
+            app:allowDividerBelow="true" />
+
+        <Preference
+            android:key="model"
+            android:title="@string/model"
+            android:summary="DeepSeek v4 Flash"
+            android:icon="@drawable/ic_cube"
+            app:allowDividerBelow="true" />
+    </PreferenceCategory>
+
+    <PreferenceCategory
+        android:title="ОБЩИЕ"
+        app:iconSpaceReserved="false">
+
+        <Preference
+            android:key="language"
+            android:title="@string/language"
+            android:summary="@string/language_desc"
+            android:icon="@drawable/ic_language" />
+
+        <Preference
+            android:key="telegram"
+            android:title="@string/telegram"
+            android:summary="@string/telegram_desc"
+            android:icon="@drawable/ic_telegram" />
+
+        <Preference
+            android:key="voice_stt"
+            android:title="@string/voice_stt"
+            android:summary="@string/voice_stt_desc"
+            android:icon="@drawable/ic_microphone" />
+    </PreferenceCategory>
+
+    <PreferenceCategory
+        android:title="ВНЕШНИЙ ВИД"
+        app:iconSpaceReserved="false">
+
+        <Preference
+            android:key="appearance"
+            android:title="@string/appearance"
+            android:summary="@string/appearance_desc"
+            android:icon="@drawable/ic_palette" />
+    </PreferenceCategory>
+
+    <PreferenceCategory
+        android:title="ПОВЕДЕНИЕ"
+        app:iconSpaceReserved="false">
+
+        <SwitchPreferenceCompat
+            android:key="auto_start"
+            android:title="@string/auto_start_gateway"
+            android:summary="@string/auto_start_gateway_desc"
+            android:icon="@drawable/ic_shield"
+            android:defaultValue="true" />
+
+        <SwitchPreferenceCompat
+            android:key="notifications"
+            android:title="@string/notifications"
+            android:summary="@string/notifications_desc"
+            android:icon="@drawable/ic_notifications_settings"
+            android:defaultValue="true" />
+    </PreferenceCategory>
+
+    <PreferenceCategory
+        android:title="ИНФОРМАЦИЯ"
+        app:iconSpaceReserved="false">
+
+        <Preference
+            android:key="about"
+            android:title="@string/about_app"
+            android:summary="@string/about_app_desc"
+            android:icon="@drawable/ic_info" />
+
+        <Preference
+            android:key="system_info"
+            android:title="@string/system_info"
+            android:summary="@string/system_info_desc"
+            android:icon="@drawable/ic_code" />
+    </PreferenceCategory>
+
+</PreferenceScreen>

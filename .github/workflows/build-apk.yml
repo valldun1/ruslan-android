@@ -1,0 +1,141 @@
+name: Build APK
+
+on:
+  push:
+    branches: [ main, master ]
+    paths:
+      - 'android-app/**'
+      - 'termux-bundle/**'
+      - 'scripts/**'
+      - '.github/workflows/build-apk.yml'
+  pull_request:
+  workflow_dispatch:
+
+env:
+  GRADLE_OPTS: "-Dorg.gradle.daemon=false -Dorg.gradle.caching=true"
+  TERMUX_PREFIX_ASSET: android-app/app/src/main/assets/usr.tar.zst
+
+jobs:
+  build-prefix:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: arm64
+
+      - name: Build Termux prefix
+        run: |
+          docker run --rm --platform linux/arm64 \
+            -v "$PWD/termux-bundle:/build" \
+            -v "$PWD/android-app/app/src/main/assets:/output" \
+            -e OUTPUT_DIR=/output \
+            --privileged \
+            ubuntu:22.04 bash -c "
+              apt-get update && apt-get install -y qemu-user-static binfmt-support zstd tar wget unzip curl python3 git
+              update-binfmts --enable qemu-aarch64
+              /build/build-prefix.sh
+            "
+
+      - name: Verify prefix
+        run: |
+          test -s "$TERMUX_PREFIX_ASSET"
+          sha256sum "$TERMUX_PREFIX_ASSET" | tee "$TERMUX_PREFIX_ASSET.sha256"
+
+      - name: Cache prefix
+        uses: actions/cache@v4
+        with:
+          path: |
+            ${{ env.TERMUX_PREFIX_ASSET }}
+            ${{ env.TERMUX_PREFIX_ASSET }}.sha256
+          key: prefix-${{ hashFiles('termux-bundle/**') }}-${{ github.sha }}
+
+      - name: Upload prefix artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: termux-prefix
+          path: |
+            ${{ env.TERMUX_PREFIX_ASSET }}
+            ${{ env.TERMUX_PREFIX_ASSET }}.sha256
+          retention-days: 7
+
+  build-apk:
+    needs: build-prefix
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download prefix artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: termux-prefix
+          path: android-app/app/src/main/assets/
+
+      - name: Verify prefix integrity
+        run: |
+          cd android-app/app/src/main/assets
+          sha256sum -c usr.tar.zst.sha256
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+          cache: gradle
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+        with:
+          packages: 'platform-tools platforms;android-34 build-tools;34.0.0'
+
+      - name: Build Debug APK
+        working-directory: android-app
+        run: ./gradlew assembleDebug --stacktrace
+
+      - name: Upload Debug APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: ruslan-agent-debug
+          path: android-app/app/build/outputs/apk/debug/app-debug.apk
+          retention-days: 30
+
+      - name: Build Release APK
+        if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
+        working-directory: android-app
+        run: ./gradlew assembleRelease --stacktrace
+
+      - name: Sign Release APK
+        if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
+        env:
+          SIGNING_KEY: ${{ secrets.SIGNING_KEY }}
+          SIGNING_KEY_ALIAS: ${{ secrets.SIGNING_KEY_ALIAS }}
+          SIGNING_KEY_PASSWORD: ${{ secrets.SIGNING_KEY_PASSWORD }}
+        run: |
+          if [ -n "$SIGNING_KEY" ]; then
+            echo "$SIGNING_KEY" | base64 -d > signing.keystore
+            jarsigner -keystore signing.keystore \
+              -storepass "$SIGNING_KEY_PASSWORD" \
+              -keypass "$SIGNING_KEY_PASSWORD" \
+              android-app/app/build/outputs/apk/release/app-release-unsigned.apk \
+              "$SIGNING_KEY_ALIAS"
+            zipalign -f 4 \
+              android-app/app/build/outputs/apk/release/app-release-unsigned.apk \
+              ruslan-agent.apk
+          fi
+
+      - name: Upload Release APK
+        if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ruslan-agent-release
+          path: ruslan-agent.apk
+          retention-days: 90
+
+      - name: Create Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v1
+        with:
+          files: ruslan-agent.apk
+          generate_release_notes: true

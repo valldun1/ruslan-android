@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Руслан Agent</string>
+    
+    <!-- Dashboard -->
+    <string name="status_active">Активен</string>
+    <string name="status_inactive">Неактивен</string>
+    <string name="gateway_running">Gateway запущен</string>
+    <string name="gateway_stopped">Gateway остановлен</string>
+    <string name="open_chat">Открыть чат</string>
+    <string name="settings">Настройки</string>
+    
+    <!-- Stats -->
+    <string name="sessions">Сессий</string>
+    <string name="memory">Память</string>
+    <string name="uptime">Время работы</string>
+    
+    <!-- Bottom Navigation -->
+    <string name="nav_home">Главная</string>
+    <string name="nav_chat">Чат</string>
+    <string name="nav_scenarios">Сценарии</string>
+    <string name="nav_profile">Профиль</string>
+    
+    <!-- Chat -->
+    <string name="message_hint">Сообщение...</string>
+    <string name="today">Сегодня</string>
+    
+    <!-- Settings -->
+    <string name="model_provider">Провайдер модели</string>
+    <string name="model_provider_desc">Настройка API ключа и endpoint</string>
+    <string name="model">Модель</string>
+    <string name="language">Язык</string>
+    <string name="language_desc">Выберите язык интерфейса</string>
+    <string name="telegram">Telegram</string>
+    <string name="telegram_desc">Токен бота и разрешённые пользователи</string>
+    <string name="voice_stt">Голос (STT)</string>
+    <string name="voice_stt_desc">Провайдер распознавания речи</string>
+    <string name="appearance">Оформление</string>
+    <string name="appearance_desc">Тема, акцентный цвет, шрифт</string>
+    <string name="auto_start_gateway">Автозапуск Gateway</string>
+    <string name="auto_start_gateway_desc">Запускать сервис при старте устройства</string>
+    <string name="notifications">Уведомления</string>
+    <string name="notifications_desc">Показывать системные уведомления</string>
+    <string name="about_app">О приложении</string>
+    <string name="about_app_desc">Версия, лицензия, информация</string>
+    <string name="system_info">Системная информация</string>
+    <string name="system_info_desc">Логи, состояние, диагностика</string>
+    
+    <!-- Wizard -->
+    <string name="welcome">Добро пожаловать!</string>
+    <string name="welcome_desc">Давайте настроим Руслан AI-агента</string>
+    <string name="choose_provider">Выберите провайдера</string>
+    <string name="recommended">Рекомендуем</string>
+    <string name="enter_api_key">Введите API ключ</string>
+    <string name="api_key_desc">Ваш ключ будет зашифрован и сохранён локально</string>
+    <string name="api_key_hint">sk-...</string>
+    <string name="telegram_setup">Настройка Telegram</string>
+    <string name="bot_token_hint">Введите токен бота</string>
+    <string name="allowed_users_hint">@username или ID через запятую</string>
+    <string name="next">Далее</string>
+    <string name="done">Готово</string>
+    <string name="back">Назад</string>
+    
+    <!-- Notification -->
+    <string name="channel_name">Руслан Gateway</string>
+    <string name="channel_description">Уведомления о статусе AI-агента</string>
+    <string name="notification_title">Руслан работает</string>
+    <string name="notification_text">Gateway запущен и активен</string>
+    <string name="stop">Стоп</string>
+    <string name="restart">Перезапуск</string>
+    
+    <!-- Battery optimization -->
+    <string name="battery_opt_title">Отключить оптимизацию батареи</string>
+    <string name="battery_opt_message">Для корректной работы Руслана необходимо отключить оптимизацию батареи. Это предотвратит закрытие приложения системой.</string>
+    <string name="go_to_settings">Перейти в настройки</string>
+    <string name="later">Позже</string>
+</resources>
