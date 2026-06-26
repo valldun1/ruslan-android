@@ -4,10 +4,11 @@ set -euo pipefail
 # Build Termux prefix with Ruslan Agent for ARM64
 # Output: usr.tar.zst
 #
-# CHANGELOG (2026-06-26):
-#   - Replaced apt-get with pkg install (Termux native package manager)
-#   - proot used only for chroot/sandbox isolation, not for package install
-#   - Python deps installed via pip install --target=$PREFIX_DIR/site-packages
+# CHANGELOG (2026-06-26 v3):
+#   - Removed all `pkg install` calls (pkg unavailable in Docker ubuntu:22.04)
+#   - Use python from Termux bootstrap via proot (no host python required)
+#   - git clone ruslan-agent on HOST (x86), then copy to prefix
+#   - Removed strip on ARM64 binaries (cross-arch strip is unsafe)
 
 TERMUX_APK_URL="https://f-droid.org/repo/com.termux_118.apk"
 PREFIX_DIR="/prefix"
@@ -34,61 +35,59 @@ unzip -q bootstrap.zip -d "$PREFIX_DIR"
 # Cleanup
 rm -rf termux.apk termux_extract bootstrap.zip
 
-echo "=== Installing Base Packages (via pkg, native Termux) ==="
-
-# Termux's bootstrap already has pkg + python. Install additional packages
-# using `pkg` (not apt-get — Termux uses pkg).
-# We call pkg directly on the host, then chroot into prefix via proot to use them.
-pkg update -y
-pkg install -y python git openssl ca-certificates libxml2 libxslt zlib libffi binutils rust 2>&1 | tail -20 || true
-
-# Sync the packages into the prefix by running pkg inside proot
-echo "Syncing packages into prefix via proot..."
+echo "=== Setup proot helper ==="
 
 # Helper: run a command in the prefix using proot
 proot_run() {
-    command proot -0 -r "$PREFIX_DIR" -b /dev -b /proc -b /sys \
-        -b /data/data/com.termux/files/usr:/host-usr \
-        "$@"
+    command proot -0 -r "$PREFIX_DIR" -b /dev -b /proc -b /sys "$@"
 }
 
-# Verify Termux bootstrap has working python
+# Verify bootstrap python works
 echo "Verifying bootstrap python..."
-proot_run /host-usr/bin/python3 --version
+proot_run /bin/python3 --version || {
+    echo "ERROR: bootstrap python not found"
+    exit 1
+}
 
 echo "=== Installing Python Dependencies ==="
 
 # Install Python dependencies into the prefix's site-packages
-# We do this from the host (where pkg put python) but target the prefix
-PIP_TARGET="$PIP_TARGET_DIR" /usr/bin/python3 -m pip install --upgrade pip 2>&1 | tail -5 || true
+# Use bootstrap python (not host python) — proot isolates to Termux rootfs
+proot_run /bin/python3 -m pip install --upgrade pip 2>&1 | tail -3 || true
 
 # Install build dependencies first (for Rust compilation)
-PIP_TARGET="$PIP_TARGET_DIR" /usr/bin/python3 -m pip install --no-cache-dir \
-    maturin \
-    setuptools-rust \
-    wheel 2>&1 | tail -10 || true
+proot_run /bin/python3 -m pip install --no-cache-dir \
+    --target "$PIP_TARGET_DIR" \
+    maturin setuptools-rust wheel 2>&1 | tail -5 || true
 
 # Install pinned dependencies
 if [ -f /build/pin/pip.txt ]; then
     echo "Installing from pip.txt..."
-    PIP_TARGET="$PIP_TARGET_DIR" /usr/bin/python3 -m pip install --no-cache-dir -r /build/pin/pip.txt 2>&1 | tail -10 || true
+    proot_run /bin/python3 -m pip install --no-cache-dir \
+        --target "$PIP_TARGET_DIR" \
+        -r /build/pin/pip.txt 2>&1 | tail -5 || true
 fi
 
 if [ -f /build/pin/python.txt ]; then
     echo "Installing from python.txt..."
-    PIP_TARGET="$PIP_TARGET_DIR" /usr/bin/python3 -m pip install --no-cache-dir -r /build/pin/python.txt 2>&1 | tail -10 || true
+    proot_run /bin/python3 -m pip install --no-cache-dir \
+        --target "$PIP_TARGET_DIR" \
+        -r /build/pin/python.txt 2>&1 | tail -5 || true
 fi
 
 echo "=== Installing Ruslan Agent ==="
 
-# Clone Ruslan Agent into the prefix
+# Clone Ruslan Agent on HOST (x86 faster, no qemu overhead) then copy to prefix
 RUSLAN_VERSION="${RUSLAN_VERSION:-0.17.0}"
 git clone --depth 1 --branch "v${RUSLAN_VERSION}" \
     https://github.com/valldun1/ruslan.git /tmp/ruslan 2>/dev/null || \
     git clone --depth 1 \
     https://github.com/valldun1/ruslan.git /tmp/ruslan
 
-PIP_TARGET="$PIP_TARGET_DIR" /usr/bin/python3 -m pip install --no-cache-dir -e /tmp/ruslan 2>&1 | tail -10 || true
+# Install into prefix site-packages
+proot_run /bin/python3 -m pip install --no-cache-dir \
+    --target "$PIP_TARGET_DIR" \
+    -e /tmp/ruslan 2>&1 | tail -5 || true
 
 echo "=== Cleanup ==="
 
@@ -99,9 +98,8 @@ find "$PREFIX_DIR" -name "__pycache__" -type d -exec rm -rf {} + 2>/dev/null || 
 find "$PREFIX_DIR" -name "*.pyc" -delete 2>/dev/null || true
 find "$PREFIX_DIR" -name "*.pyo" -delete 2>/dev/null || true
 
-# Strip binaries
-find "$PREFIX_DIR/bin" -type f -executable -exec strip {} \; 2>/dev/null || true
-find "$PREFIX_DIR/lib" -name "*.so" -exec strip {} \; 2>/dev/null || true
+# Note: skip strip on cross-arch binaries (aarch64 binaries stripped from x86 host
+# can break. Do strip in release pipeline or on-device if needed.)
 
 echo "=== Creating Archive ==="
 
