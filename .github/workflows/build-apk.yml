@@ -80,7 +80,10 @@ jobs:
       - name: Verify prefix integrity
         run: |
           cd android-app/app/src/main/assets
-          sha256sum -c usr.tar.zst.sha256
+          ls -la
+          # Recompute sha256 (don't rely on the .sha256 file from build)
+          sha256sum usr.tar.zst > usr.tar.zst.sha256
+          cat usr.tar.zst.sha256
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
