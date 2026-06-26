@@ -50,15 +50,6 @@ android {
         viewBinding = true
     }
 
-    splits {
-        abi {
-            isEnable = true
-            reset()
-            include("arm64-v8a")
-            isUniversalApk = false
-        }
-    }
-
     // Do not compress zst (already compressed)
     aaptOptions {
         noCompress("zst")
