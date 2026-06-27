@@ -127,9 +127,16 @@ jobs:
               -keypass "$SIGNING_KEY_PASSWORD" \
               android-app/app/build/outputs/apk/release/app-release-unsigned.apk \
               "$SIGNING_KEY_ALIAS"
-            zipalign -f 4 \
+            ZIPALIGN="$ANDROID_HOME/build-tools/34.0.0/zipalign"
+            if [ ! -x "$ZIPALIGN" ]; then
+              ZIPALIGN=$(ls -1 "$ANDROID_HOME"/build-tools/*/zipalign 2>/dev/null | sort -V | tail -1)
+            fi
+            echo "Using zipalign: $ZIPALIGN"
+            "$ZIPALIGN" -f -p 4 \
               android-app/app/build/outputs/apk/release/app-release-unsigned.apk \
               ruslan-agent.apk
+            ls -la ruslan-agent.apk
+            sha256sum ruslan-agent.apk
           fi
 
       - name: Upload Release APK
