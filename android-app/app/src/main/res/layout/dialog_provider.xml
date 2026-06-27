@@ -26,7 +26,7 @@
         android:textSize="14sp"
         android:fontFamily="monospace"
         android:hint="DeepSeek"
-        android:hintTextColor="@color/text_tertiary" />
+        android:textColorHint="@color/text_tertiary" />
 
     <TextView
         android:layout_width="wrap_content"
@@ -48,7 +48,7 @@
         android:textSize="12sp"
         android:fontFamily="monospace"
         android:hint="https://api.deepseek.com/v1"
-        android:hintTextColor="@color/text_tertiary" />
+        android:textColorHint="@color/text_tertiary" />
 
     <TextView
         android:layout_width="wrap_content"
@@ -71,7 +71,7 @@
         android:fontFamily="monospace"
         android:inputType="textPassword"
         android:hint="sk-..."
-        android:hintTextColor="@color/text_tertiary" />
+        android:textColorHint="@color/text_tertiary" />
 
     <TextView
         android:layout_width="wrap_content"
@@ -92,6 +92,6 @@
         android:textSize="14sp"
         android:fontFamily="monospace"
         android:hint="deepseek-chat"
-        android:hintTextColor="@color/text_tertiary" />
+        android:textColorHint="@color/text_tertiary" />
 
 </LinearLayout>
