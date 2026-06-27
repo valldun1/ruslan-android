@@ -30,7 +30,7 @@
     <!-- Buttons — terminal style -->
     <color name="btn_primary_bg">#00ff88</color>
     <color name="btn_primary_text">#0a0a0a</color>
-    <color name="btn_secondary_bg">transparent</color>
+    <color name="btn_secondary_bg">#00000000</color>
     <color name="btn_secondary_text">#00ff88</color>
     <color name="btn_secondary_stroke">#00ff88</color>
 
