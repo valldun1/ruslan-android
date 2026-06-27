@@ -68,7 +68,7 @@
         android:layout_width="match_parent"
         android:layout_height="28dp"
         android:background="@color/bg_surface"
-        android:text="[provider] select & configure ♦"
+        android:text="[provider] select &amp; configure"
         android:textColor="@color/text_tertiary"
         android:textSize="11sp"
         android:fontFamily="monospace"
