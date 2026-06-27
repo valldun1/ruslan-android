@@ -1,69 +1,123 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.constraintlayout.widget.ConstraintLayout
-    xmlns:android="http://schemas.android.com/apk/res/android"
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
-    android:layout_height="match_parent">
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="@color/bg_primary">
 
-    <ImageButton
-        android:id="@+id/btnBack"
-        android:layout_width="48dp"
-        android:layout_height="48dp"
-        android:layout_marginStart="8dp"
-        android:layout_marginTop="8dp"
-        android:background="?attr/selectableItemBackgroundBorderless"
-        android:contentDescription="@string/back"
-        android:src="@drawable/ic_menu"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent" />
+    <!-- Terminal Header -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="44dp"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:paddingHorizontal="8dp"
+        android:background="@color/bg_surface">
 
-    <EditText
-        android:id="@+id/etMessage"
-        android:layout_width="0dp"
-        android:layout_height="48dp"
-        android:layout_marginStart="16dp"
-        android:layout_marginEnd="8dp"
-        android:layout_marginBottom="16dp"
-        android:hint="@string/type_message"
-        android:inputType="text"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toStartOf="@id/btnAttachment"
-        app:layout_constraintStart_toStartOf="parent" />
+        <ImageButton
+            android:id="@+id/btnBack"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:src="@drawable/ic_menu"
+            android:contentDescription="@string/back"
+            app:tint="@color/text_secondary" />
 
-    <ImageButton
-        android:id="@+id/btnAttachment"
-        android:layout_width="48dp"
-        android:layout_height="48dp"
-        android:layout_marginEnd="8dp"
-        android:background="?attr/selectableItemBackgroundBorderless"
-        android:contentDescription="@string/attachment"
-        android:src="@drawable/ic_chat"
-        app:layout_constraintBottom_toBottomOf="@id/etMessage"
-        app:layout_constraintEnd_toStartOf="@id/btnVoice"
-        app:layout_constraintTop_toTopOf="@id/etMessage" />
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="> ruslan@agent:~$"
+            android:textColor="@color/accent_green"
+            android:textSize="13sp"
+            android:fontFamily="monospace"
+            android:layout_marginStart="8dp" />
 
-    <ImageButton
-        android:id="@+id/btnVoice"
-        android:layout_width="48dp"
-        android:layout_height="48dp"
-        android:layout_marginEnd="8dp"
-        android:background="?attr/selectableItemBackgroundBorderless"
-        android:contentDescription="@string/voice"
-        android:src="@drawable/ic_microphone"
-        app:layout_constraintBottom_toBottomOf="@id/etMessage"
-        app:layout_constraintEnd_toStartOf="@id/btnSend"
-        app:layout_constraintTop_toTopOf="@id/etMessage" />
+        <TextView
+            android:id="@+id/tvConnectionStatus"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="● online"
+            android:textColor="@color/success_green"
+            android:textSize="11sp"
+            android:fontFamily="monospace"
+            android:layout_marginEnd="12dp" />
+    </LinearLayout>
 
-    <ImageButton
-        android:id="@+id/btnSend"
-        android:layout_width="48dp"
-        android:layout_height="48dp"
-        android:layout_marginEnd="16dp"
-        android:background="?attr/selectableItemBackgroundBorderless"
-        android:contentDescription="@string/send"
-        android:src="@drawable/ic_telegram"
-        app:layout_constraintBottom_toBottomOf="@id/etMessage"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintTop_toTopOf="@id/etMessage" />
+    <!-- Messages RecyclerView -->
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/rvMessages"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:clipToPadding="false"
+        android:padding="8dp"
+        android:scrollbars="vertical" />
 
-</androidx.constraintlayout.widget.ConstraintLayout>
+    <!-- Input Area (terminal-style) -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:background="@color/bg_surface"
+        android:padding="8dp">
+
+        <EditText
+            android:id="@+id/etMessage"
+            android:layout_width="0dp"
+            android:layout_height="42dp"
+            android:layout_weight="1"
+            android:background="@color/bg_input"
+            android:paddingHorizontal="12dp"
+            android:textColor="@color/text_primary"
+            android:textColorHint="@color/text_tertiary"
+            android:textSize="13sp"
+            android:fontFamily="monospace"
+            android:hint="$ введите команду..."
+            android:inputType="textMultiLine"
+            android:maxLines="3" />
+
+        <ImageButton
+            android:id="@+id/btnAttachment"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:layout_marginStart="4dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:src="@drawable/ic_code"
+            android:contentDescription="@string/attachment"
+            app:tint="@color/text_secondary" />
+
+        <ImageButton
+            android:id="@+id/btnVoice"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:src="@drawable/ic_microphone"
+            android:contentDescription="@string/voice"
+            app:tint="@color/text_secondary" />
+
+        <ImageButton
+            android:id="@+id/btnSend"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:src="@drawable/ic_chat"
+            android:contentDescription="@string/send"
+            app:tint="@color/accent_green" />
+    </LinearLayout>
+
+    <!-- Terminal Status Bar -->
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="20dp"
+        android:background="@color/bg_surface"
+        android:text="[chat] type message and press → ♦"
+        android:textColor="@color/text_tertiary"
+        android:textSize="10sp"
+        android:fontFamily="monospace"
+        android:gravity="center_vertical"
+        android:paddingStart="8dp" />
+
+</LinearLayout>

@@ -1,70 +1,89 @@
-# Plan — APK Build-Fix-Install Cycle
+# Plan — Chat Fix
 
-# План: APK Build-Fix-Install Автоцикл
+## План реализации: Починка чата в Ruslan Agent
 
-## Шаг 1: Локальный фикс кода/конфигурации
-- **Файлы:** `.github/workflows/build-apk.yml`, `app/build.gradle`, исходный код
-- **Команды:**
-  ```bash
-  nano .github/workflows/build-apk.yml
-  git diff
-  ```
-- **Проверки:** Изменения внесены корректно, YAML синтаксис валиден, нет очевидных ошибок в коде.
+### Шаг 1. Создание модели данных
+- **Файл:** `model/Message.kt`
+- **Класс:** `data class Message`
+- **Поля:**
+  - `id: String` (UUID)
+  - `text: String`
+  - `isUser: Boolean` (true — пользователь, false — Hermes)
+  - `timestamp: Long`
+  - `status: MessageStatus` (enum: PENDING, SENT, ERROR)
 
-## Шаг 2: Коммит и пуш в master
-- **Файлы:** Измененные файлы проекта
-- **Команды:**
-  ```bash
-  git add .
-  git commit -m "fix: update build config"
-  git push origin master
-  ```
-- **Проверки:** `git status` показывает чистое дерево, пуш проходит без ошибок авторизации.
+### Шаг 2. Настройка UI Layouts (Терминальный стиль)
+- **Файл:** `res/values/colors.xml`
+  - Добавить: `<color name="terminal_bg">#000000</color>`
+  - Добавить: `<color name="terminal_text">#00FF00</color>`
+- **Файл:** `res/layout/activity_chat.xml`
+  - Root layout: `android:background="@color/terminal_bg"`
+  - Добавить: `androidx.recyclerview.widget.RecyclerView` (id: `rvMessages`, `layout_height="0dp"`, `layout_weight="1"`)
+  - Добавить: `androidx.appcompat.widget.AppCompatEditText` (id: `etMessageInput`, `textColor="@color/terminal_text"`, `backgroundTint="@color/terminal_text"`)
+  - Добавить: `android.widget.ImageButton` (id: `btnSend`, `tint="@color/terminal_text"`)
+- **Файл:** `res/layout/item_message.xml`
+  - Root: `LinearLayout` (orientation vertical)
+  - Добавить: `TextView` (id: `tvMessageText`, `textColor="@color/terminal_text"`, `fontFamily="monospace"`, `textSize="14sp"`)
+  - Добавить: `TextView` (id: `tvTimestamp`, `textColor="#888888"`, `fontFamily="monospace"`, `textSize="10sp"`)
 
-## Шаг 3: Ожидание сборки GitHub Actions
-- **Файлы:** Нет
-- **Команды:**
-  ```bash
-  gh run watch
-  # или
-  gh run list --workflow=build-apk.yml --limit 1
-  ```
-- **Проверки:** Статус последнего запуска (run) меняется на `completed`, результат (conclusion) — `success`.
+### Шаг 3. Реализация адаптера для RecyclerView
+- **Файл:** `adapter/MessageAdapter.kt`
+- **Класс:** `MessageAdapter : RecyclerView.Adapter<MessageAdapter.MessageViewHolder>()`
+- **Свойства:** `private val messages: MutableList<Message>`
+- **Методы:**
+  - `onCreateViewHolder(parent, viewType)`: Инфлейт `item_message.xml`
+  - `onBindViewHolder(holder, position)`: Биндит `Message` во `ViewHolder`, применяет отступы (gravity start/end в зависимости от `isUser`)
+  - `getItemCount()`: Возвращает `messages.size`
+  - `addMessage(message: Message)`: Добавляет в список и вызывает `notifyItemInserted`
+  - `updateMessages(newMessages: List<Message>)`: Очищает, добавляет, вызывает `notifyDataSetChanged`
+- **Внутренний класс:** `MessageViewHolder(view: View)` — содержит `tvMessage` и `tvTimestamp`
 
-## Шаг 4: Скачивание APK артефакта
-- **Файлы:** `./artifacts/ruslan-agent.apk`
-- **Команды:**
-  ```bash
-  RUN_ID=$(gh run list --workflow=build-apk.yml --limit 1 --json databaseId -q '.[0].databaseId')
-  gh run download $RUN_ID -n apk-artifact -D ./artifacts
-  ```
-- **Проверки:** Файл `./artifacts/ruslan-agent.apk` существует, размер > 0 байт (около 20MB).
+### Шаг 4. Сетевой слой (Hermes Gateway)
+- **Файл:** `network/HermesApi.kt`
+- **Интерфейс:** `HermesApi`
+- **Методы:**
+  - `@GET("history") suspend fun getHistory(): Response<List<MessageDto>>`
+  - `@POST("message") suspend fun sendMessage(@Body request: MessageRequest): Response<MessageDto>`
+- **Файл:** `network/RetrofitClient.kt`
+- **Объект:** `RetrofitClient`
+- **Свойства:** `val api: HermesApi` (настройка Retrofit + OkHttp + ConverterFactory)
+- **Файл:** `repository/ChatRepository.kt`
+- **Класс:** `ChatRepository(private val api: HermesApi)`
+- **Методы:**
+  - `suspend fun loadHistory(): List<Message>` (маппинг DTO в data class)
+  - `suspend fun postMessage(text: String): Message` (отправка и получение ответа)
 
-## Шаг 5: Установка APK на устройство
-- **Файлы:** `./artifacts/ruslan-agent.apk`
-- **Команды:**
-  ```bash
-  # Так как pm install из Termux вызывает SecurityException без root:
-  termux-open ./artifacts/ruslan-agent.apk
-  ```
-- **Проверки:** На экране телефона появился системный диалог установки (Package Installer). Пользователь подтвердил установку.
+### Шаг 5. Интеграция логики в ChatActivity
+- **Файл:** `ChatActivity.kt` (использует существующий View Binding)
+- **Свойства:**
+  - `private lateinit var binding: ActivityChatBinding`
+  - `private lateinit var adapter: MessageAdapter`
+  - `private val repository = ChatRepository(RetrofitClient.api)`
+- **Метод `onCreate(savedInstanceState)`:**
+  - Инициализация `MessageAdapter` пустым списком
+  - Настройка `binding.rvMessages`: `layoutManager = LinearLayoutManager(this)`, `adapter = adapter`
+  - Вызов `loadHistory()`
+  - Установка слушателя `binding.btnSend.setOnClickListener { sendMessage() }`
+- **Метод `loadHistory()`:**
+  - Запуск `lifecycleScope.launch`
+  - Вызов `repository.loadHistory()`
+  - Обновление UI: `adapter.updateMessages(history)` (в случае ошибки — показ тоста/сообщения в чате)
+- **Метод `sendMessage()`:**
+  - Чтение текста из `binding.etMessageInput.text`
+  - Если пусто — return
+  - Создание `Message(text = input, isUser = true, status = PENDING)`
+  - Вызов `adapter.addMessage(userMessage)`, очистка поля ввода
+  - Запуск `lifecycleScope.launch`:
+    - Вызов `repository.postMessage(input)`
+    - При успехе: создание `Message` от Hermes, `adapter.addMessage(botMessage)`
+    - При ошибке: обновление статуса `userMessage` на ERROR, `adapter.notifyDataSetChanged()`
 
-## Шаг 6: Проверка установки и запуска
-- **Файлы:** Нет
-- **Команды:**
-  ```bash
-  # Проверка наличия пакета в системе
-  pm list packages | grep ruslan
-  # Запуск приложения (замените package.name на реальный)
-  termux-open ruslan.package.name
-  ```
-- **Проверки:** Пакет найден в выводе `pm list packages`. Приложение открывается на экране и не падает сразу (нет сообщения "Приложение остановлено").
-
-## Шаг 7: Сбор логов при неудаче (если Шаг 6 провален)
-- **Файлы:** `crash_log.txt`
-- **Команды:**
-  ```bash
-  # Если есть доступ к logcat (через root или встроенный termux logcat)
-  logcat -d > crash_log.txt
-  ```
-- **Проверки:** Логи содержат stack trace ошибки. Переход к Шагу 1 с новыми данными для фикса.
+### Шаг 6. Финальная полировка терминального стиля
+- **Файл:** `res/values/themes.xml` (или styles.xml)
+- **Стиль:** `TerminalTheme` (опционально, если нужно переопределить тему активити)
+  - `windowBackground`: `#000000`
+  - `colorPrimary`: `#00FF00`
+- **Файл:** `ChatActivity.kt`
+- **Метод:** `onCreate()`
+  - Убрать стандартную `ActionBar` (если мешает терминальному виду) через `supportRequestWindowFeature(Window.FEATURE_NO_TITLE)` или тема `NoActionBar`.
+  - Скрыть клавиатуру после отправки сообщения.
