@@ -122,21 +122,37 @@ jobs:
         run: |
           if [ -n "$SIGNING_KEY" ]; then
             echo "$SIGNING_KEY" | base64 -d > signing.keystore
-            jarsigner -keystore signing.keystore \
-              -storepass "$SIGNING_KEY_PASSWORD" \
-              -keypass "$SIGNING_KEY_PASSWORD" \
-              android-app/app/build/outputs/apk/release/app-release-unsigned.apk \
-              "$SIGNING_KEY_ALIAS"
+            ALIGNED_APK="app-release-aligned.apk"
+            SIGNED_APK="ruslan-agent.apk"
             ZIPALIGN="$ANDROID_HOME/build-tools/34.0.0/zipalign"
             if [ ! -x "$ZIPALIGN" ]; then
               ZIPALIGN=$(ls -1 "$ANDROID_HOME"/build-tools/*/zipalign 2>/dev/null | sort -V | tail -1)
             fi
+            APKSIGNER="$ANDROID_HOME/build-tools/34.0.0/apksigner"
+            if [ ! -x "$APKSIGNER" ]; then
+              APKSIGNER=$(ls -1 "$ANDROID_HOME"/build-tools/*/apksigner 2>/dev/null | sort -V | tail -1)
+            fi
             echo "Using zipalign: $ZIPALIGN"
-            "$ZIPALIGN" -f -p 4 \
+            echo "Using apksigner: $APKSIGNER"
+            # Step 1: zipalign BEFORE signing
+            "$ZIPALIGN" -p -f 4 \
               android-app/app/build/outputs/apk/release/app-release-unsigned.apk \
-              ruslan-agent.apk
-            ls -la ruslan-agent.apk
-            sha256sum ruslan-agent.apk
+              "$ALIGNED_APK"
+            # Step 2: apksigner (v1+v2+v3) instead of jarsigner (v1 only)
+            "$APKSIGNER" sign \
+              --ks signing.keystore \
+              --ks-key-alias "$SIGNING_KEY_ALIAS" \
+              --ks-pass "pass:$SIGNING_KEY_PASSWORD" \
+              --key-pass "pass:$SIGNING_KEY_PASSWORD" \
+              --v2-signing-enabled true \
+              --v3-signing-enabled true \
+              --out "$SIGNED_APK" \
+              "$ALIGNED_APK"
+            # Verify signature scheme
+            "$APKSIGNER" verify --verbose "$SIGNED_APK"
+            ls -la "$SIGNED_APK"
+            sha256sum "$SIGNED_APK"
+            rm -f "$ALIGNED_APK"
           fi
 
       - name: Upload Release APK
