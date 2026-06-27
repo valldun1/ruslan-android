@@ -1,37 +1,70 @@
+# Plan — APK Build-Fix-Install Cycle
 
-# Plan (GLM-5.2) — 2026-06-26
+# План: APK Build-Fix-Install Автоцикл
 
-## Bug A — build-prefix.sh / proot / Termux
+## Шаг 1: Локальный фикс кода/конфигурации
+- **Файлы:** `.github/workflows/build-apk.yml`, `app/build.gradle`, исходный код
+- **Команды:**
+  ```bash
+  nano .github/workflows/build-apk.yml
+  git diff
+  ```
+- **Проверки:** Изменения внесены корректно, YAML синтаксис валиден, нет очевидных ошибок в коде.
 
-1. **Убрать apt-get из proot-окружения**
-   - Вырезать вызовы apt-get, т.к. в Termux rootfs нет /usr/bin/apt
-   - Заменить на `pkg install` через proot или прямой вызов `pkg`
+## Шаг 2: Коммит и пуш в master
+- **Файлы:** Измененные файлы проекта
+- **Команды:**
+  ```bash
+  git add .
+  git commit -m "fix: update build config"
+  git push origin master
+  ```
+- **Проверки:** `git status` показывает чистое дерево, пуш проходит без ошибок авторизации.
 
-2. **Разделить: proot для chroot, pkg для пакетов**
-   - proot — только для sandbox/target-path (--rootfs=$PREFIX_DIR)
-   - Установка пакетов идёт ДО proot через `pkg install python git openssl`
+## Шаг 3: Ожидание сборки GitHub Actions
+- **Файлы:** Нет
+- **Команды:**
+  ```bash
+  gh run watch
+  # или
+  gh run list --workflow=build-apk.yml --limit 1
+  ```
+- **Проверки:** Статус последнего запуска (run) меняется на `completed`, результат (conclusion) — `success`.
 
-3. **Альтернатива: --link2symlink (не рекомендую)**
-   - Hack, ломает совместимость, дублирует менеджер пакетов
+## Шаг 4: Скачивание APK артефакта
+- **Файлы:** `./artifacts/ruslan-agent.apk`
+- **Команды:**
+  ```bash
+  RUN_ID=$(gh run list --workflow=build-apk.yml --limit 1 --json databaseId -q '.[0].databaseId')
+  gh run download $RUN_ID -n apk-artifact -D ./artifacts
+  ```
+- **Проверки:** Файл `./artifacts/ruslan-agent.apk` существует, размер > 0 байт (около 20MB).
 
-4. **Финал: pip install --target для Python-зависимостей**
-   - После `pkg install python git`, зависимости через `pip install --target=$PREFIX_DIR/site-packages`
+## Шаг 5: Установка APK на устройство
+- **Файлы:** `./artifacts/ruslan-agent.apk`
+- **Команды:**
+  ```bash
+  # Так как pm install из Termux вызывает SecurityException без root:
+  termux-open ./artifacts/ruslan-agent.apk
+  ```
+- **Проверки:** На экране телефона появился системный диалог установки (Package Installer). Пользователь подтвердил установку.
 
-5. **Проверка:** python --version, pip --version, git --version, python -c "import ssl"
+## Шаг 6: Проверка установки и запуска
+- **Файлы:** Нет
+- **Команды:**
+  ```bash
+  # Проверка наличия пакета в системе
+  pm list packages | grep ruslan
+  # Запуск приложения (замените package.name на реальный)
+  termux-open ruslan.package.name
+  ```
+- **Проверки:** Пакет найден в выводе `pm list packages`. Приложение открывается на экране и не падает сразу (нет сообщения "Приложение остановлено").
 
-**Рекомендация: стратегия 1+4 (pkg вне proot + pip --target в proot)**
-
-## Bug B — 10 PNG иконок
-
-6. **Создать исходник 192px (xxxhdpi base)** — Pillow
-7. **Сгенерировать 5 квадратных** (48, 72, 96, 144, 192 px)
-8. **Сгенерировать 5 круглых** (маска круга для каждого размера)
-9. **Проверить AndroidManifest.xml** (roundIcon уже прописан)
-10. **Визуальная проверка** через file + vision_analyze
-
-## План коммитов: 2 коммита
-
-**Commit 1:** fix(termux): replace apt-get with pkg install in build-prefix.sh
-**Commit 2:** feat(icons): add launcher icons (square + round) for 5 densities
-
-**Почему 2:** Bug A — runtime/sandbox, нужен revert-изолятор. Bug B — ресурсы, revert не ломает сборку.
+## Шаг 7: Сбор логов при неудаче (если Шаг 6 провален)
+- **Файлы:** `crash_log.txt`
+- **Команды:**
+  ```bash
+  # Если есть доступ к logcat (через root или встроенный termux logcat)
+  logcat -d > crash_log.txt
+  ```
+- **Проверки:** Логи содержат stack trace ошибки. Переход к Шагу 1 с новыми данными для фикса.

@@ -5,10 +5,10 @@
     <!-- Dashboard -->
     <string name="status_active">Активен</string>
     <string name="status_inactive">Неактивен</string>
-    <string name="gateway_running">Gateway запущен</string>
-    <string name="gateway_stopped">Gateway остановлен</string>
-    <string name="open_chat">Открыть чат</string>
-    <string name="settings">Настройки</string>
+    <string name="gateway_running">[gateway: запущен]</string>
+    <string name="gateway_stopped">[gateway: остановлен]</string>
+    <string name="open_chat">> Открыть чат</string>
+    <string name="settings">> Настройки</string>
     
     <!-- Stats -->
     <string name="sessions">Сессий</string>
@@ -22,12 +22,14 @@
     <string name="nav_profile">Профиль</string>
     
     <!-- Chat -->
-    <string name="message_hint">Сообщение...</string>
-    <string name="today">Сегодня</string>
+    <string name="type_message">$ введите команду...</string>
+    <string name="attachment">Файл</string>
+    <string name="voice">Голос</string>
+    <string name="send">→</string>
     
     <!-- Settings -->
-    <string name="model_provider">Провайдер модели</string>
-    <string name="model_provider_desc">Настройка API ключа и endpoint</string>
+    <string name="model_provider">Провайдеры</string>
+    <string name="model_provider_desc">Управление AI-провайдерами</string>
     <string name="model">Модель</string>
     <string name="language">Язык</string>
     <string name="language_desc">Выберите язык интерфейса</string>
@@ -52,7 +54,7 @@
     <string name="choose_provider">Выберите провайдера</string>
     <string name="recommended">Рекомендуем</string>
     <string name="enter_api_key">Введите API ключ</string>
-    <string name="api_key_desc">Ваш ключ будет зашифрован и сохранён локально</string>
+    <string name="api_key_desc">Ваш ключ будет сохранён локально</string>
     <string name="api_key_hint">sk-...</string>
     <string name="telegram_setup">Настройка Telegram</string>
     <string name="bot_token_hint">Введите токен бота</string>
@@ -64,31 +66,19 @@
     <!-- Notification -->
     <string name="channel_name">Руслан Gateway</string>
     <string name="channel_description">Уведомления о статусе AI-агента</string>
-    <string name="notification_title">Руслан работает</string>
-    <string name="notification_text">Gateway запущен и активен</string>
+    <string name="notification_title">● Руслан работает</string>
+    <string name="notification_text">Gateway запущен | 24/7</string>
     <string name="stop">Стоп</string>
     <string name="restart">Перезапуск</string>
     
     <!-- Battery optimization -->
     <string name="battery_opt_title">Отключить оптимизацию батареи</string>
-    <string name="battery_opt_message">Для корректной работы Руслана необходимо отключить оптимизацию батареи. Это предотвратит закрытие приложения системой.</string>
+    <string name="battery_opt_message">Для работы Руслана необходимо отключить оптимизацию батареи.</string>
     <string name="go_to_settings">Перейти в настройки</string>
     <string name="later">Позже</string>
 
     <!-- Chat activity -->
-    <string name="type_message">Введите сообщение...</string>
-    <string name="attachment">Вложение</string>
-    <string name="voice">Голос</string>
-    <string name="send">Отправить</string>
-
-    <!-- Wizard steps -->
-    <string name="select_provider">Выберите провайдера AI</string>
-    <string name="deepseek">DeepSeek</string>
-    <string name="openai">OpenAI</string>
-    <string name="anthropic">Anthropic</string>
-    <string name="api_key">API ключ</string>
-    <string name="show_password">Показать пароль</string>
-    <string name="bot_token">Telegram Bot Token</string>
-    <string name="enter_bot_token">Введите токен Telegram бота</string>
-    <string name="show_token">Показать токен</string>
+    <string name="message_hint">$ введите команду...</string>
+    <string name="today">Сегодня</string>
+    <string name="back_arrow"><![CDATA[<]]></string>
 </resources>

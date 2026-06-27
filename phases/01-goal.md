@@ -1,27 +1,20 @@
-# Goal — починить сборку ruslan-android
+# Goal — APK build-fix-install автоцикл
 
-## Что нужно сделать
-Добиться успешной (success) сборки **обоих** workflows:
-1. `build-apk.yml` (Build APK) — полная сборка с Termux prefix
-2. `debug-build.yml` (Debug Build) — быстрая debug-сборка
+## Что нужно
+Автоматический цикл фикса и сборки APK проекта ruslan-android:
 
-## Два независимых бага
+1. **Зафиксить** проблему сборки (если есть)
+2. **Запушить** в master → GH Actions собирает
+3. **Дождаться** завершения билда
+4. **Скачать** APK артефакт
+5. **Установить** на телефон
+6. **Проверить** ошибки установки/запуска
+7. **Исправить** и повторить — пока не заработает
 
-### Bug A: Build APK — proot error
-`build-prefix.sh` вызывает `proot /usr/bin/apt`, но в Termux rootfs нет `/usr/bin/apt`.
-**Задача:** сделать чтобы Termux bootstrap работал — ставил python, pip, git в prefix через правильный путь или без proot-apt.
+## Текущая проблема
+- APK с v2+v3 подписью собран ✅
+- Установка не тестировалась — `pm install` из Termux не работает
+- Нужна диагностика: встаёт ли APK, какие ошибки
 
-### Bug B: Debug Build — иконки
-`AndroidManifest.xml` ссылается на `@mipmap/ic_launcher*`, но в `res/` нет ни одной `mipmap-*` папки.
-**Задача:** создать иконки приложения во всех 5 плотностях (mdpi → xxxhdpi) для `ic_launcher.png` и `ic_launcher_round.png`.
-
-## Acceptance criteria
-- [ ] Коммит запушен в master
-- [ ] GitHub Actions показывает **success** для build-apk.yml
-- [ ] GitHub Actions показывает **success** для debug-build.yml
-- [ ] APK артефакт скачивается
-
-## Ограничения
-- Минимальные изменения (не переписывать build-prefix.sh с нуля)
-- Иконки можно сгенерировать программно (PIL/Pillow)
-- Не трогать то что работает (manifest, gradle, kotlin код)
+## Критерий успеха
+APK успешно устанавливается на телефон (Android 15, huaqin GC02) и запускается.

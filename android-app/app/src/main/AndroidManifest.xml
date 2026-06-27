@@ -47,6 +47,12 @@
             android:theme="@style/Theme.Ruslan"
             android:parentActivityName=".MainActivity" />
 
+        <!-- Provider Config -->
+        <activity
+            android:name=".ProviderConfigActivity"
+            android:theme="@style/Theme.Ruslan"
+            android:parentActivityName=".SettingsActivity" />
+
         <!-- Setup Wizard -->
         <activity
             android:name=".SetupWizardActivity"

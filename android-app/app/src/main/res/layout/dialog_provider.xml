@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="16dp"
+    android:background="@color/bg_primary">
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Название"
+        android:textColor="@color/text_secondary"
+        android:textSize="11sp"
+        android:fontFamily="monospace" />
+
+    <EditText
+        android:id="@+id/etName"
+        android:layout_width="match_parent"
+        android:layout_height="40dp"
+        android:layout_marginTop="4dp"
+        android:layout_marginBottom="12dp"
+        android:background="@color/bg_input"
+        android:paddingHorizontal="8dp"
+        android:textColor="@color/text_primary"
+        android:textSize="14sp"
+        android:fontFamily="monospace"
+        android:hint="DeepSeek"
+        android:hintTextColor="@color/text_tertiary" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Base URL"
+        android:textColor="@color/text_secondary"
+        android:textSize="11sp"
+        android:fontFamily="monospace" />
+
+    <EditText
+        android:id="@+id/etBaseUrl"
+        android:layout_width="match_parent"
+        android:layout_height="40dp"
+        android:layout_marginTop="4dp"
+        android:layout_marginBottom="12dp"
+        android:background="@color/bg_input"
+        android:paddingHorizontal="8dp"
+        android:textColor="@color/text_primary"
+        android:textSize="12sp"
+        android:fontFamily="monospace"
+        android:hint="https://api.deepseek.com/v1"
+        android:hintTextColor="@color/text_tertiary" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="API Key"
+        android:textColor="@color/text_secondary"
+        android:textSize="11sp"
+        android:fontFamily="monospace" />
+
+    <EditText
+        android:id="@+id/etApiKey"
+        android:layout_width="match_parent"
+        android:layout_height="40dp"
+        android:layout_marginTop="4dp"
+        android:layout_marginBottom="12dp"
+        android:background="@color/bg_input"
+        android:paddingHorizontal="8dp"
+        android:textColor="@color/accent_green"
+        android:textSize="12sp"
+        android:fontFamily="monospace"
+        android:inputType="textPassword"
+        android:hint="sk-..."
+        android:hintTextColor="@color/text_tertiary" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Модель по умолчанию"
+        android:textColor="@color/text_secondary"
+        android:textSize="11sp"
+        android:fontFamily="monospace" />
+
+    <EditText
+        android:id="@+id/etModel"
+        android:layout_width="match_parent"
+        android:layout_height="40dp"
+        android:layout_marginTop="4dp"
+        android:background="@color/bg_input"
+        android:paddingHorizontal="8dp"
+        android:textColor="@color/text_primary"
+        android:textSize="14sp"
+        android:fontFamily="monospace"
+        android:hint="deepseek-chat"
+        android:hintTextColor="@color/text_tertiary" />
+
+</LinearLayout>
