@@ -6,8 +6,6 @@
 
 > **Ruslan Agent** — AI-агент на Android. Один APK, полная автономность, Telegram gateway.
 
-![Руслан](docs/assets/ruslan-banner.png)
-
 ## ⚡ Быстрый старт
 
 1. Скачай `ruslan-agent.apk` из [Releases](../../releases)
@@ -43,7 +41,7 @@ ruslan-android/
 ├── termux-bundle/        ← Сборка Termux rootfs
 ├── scripts/              ← CI/CD скрипты
 ├── .github/workflows/    ← GitHub Actions
-└── docs/                 ← Документация
+└── phases/               ← Проектная документация (фазы разработки)
 ```
 
 ## 🚀 Сборка из исходников
@@ -61,7 +59,7 @@ git clone https://github.com/valldun1/ruslan-android.git
 cd ruslan-android
 
 # 2. Собери Termux rootfs (требует Docker)
-./scripts/build-termux-prefix.sh
+bash termux-bundle/build-prefix.sh
 
 # 3. Собери APK
 cd android-app
