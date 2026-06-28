@@ -40,33 +40,33 @@ class ChatActivity : AppCompatActivity() {
     }
 
     private fun loadGatewayConfig() {
-        // Chaquopy: config is in app's private files directory
+        // Chaquopy: config is in app's private files as JSON (ruslan-provider.json)
         try {
-            val envFile = java.io.File("${filesDir.absolutePath}/hermes/.env")
-            if (envFile.exists()) {
-                envFile.readLines().forEach { line ->
-                    if (line.startsWith("GATEWAY_URL="))
-                        gatewayUrl = line.substringAfter("=").trim().trim('"')
-                    if (line.startsWith("HERMES_GATEWAY_TOKEN="))
-                        gatewayToken = line.substringAfter("=").trim().trim('"')
-                    if (line.startsWith("API_KEY=") && gatewayToken.isEmpty())
-                        gatewayToken = line.substringAfter("=").trim().trim('"')
+            val configFile = java.io.File("${filesDir.absolutePath}/hermes/ruslan-provider.json")
+            if (configFile.exists()) {
+                val text = configFile.readText()
+                val json = org.json.JSONObject(text)
+                if (json.has("baseUrl") && !json.isNull("baseUrl")) {
+                    gatewayUrl = json.getString("baseUrl").trimEnd('/')
                 }
-            }
-            // Also check old Termux-style path for migration
-            if (gatewayUrl == "http://127.0.0.1:9123" && gatewayToken.isEmpty()) {
-                val oldEnv = java.io.File("/data/data/com.termux/files/home/.env")
-                if (oldEnv.exists()) {
-                    oldEnv.readLines().forEach { line ->
-                        if (line.startsWith("GATEWAY_URL="))
-                            gatewayUrl = line.substringAfter("=").trim().trim('"')
-                        if (line.startsWith("API_KEY=") && gatewayToken.isEmpty())
-                            gatewayToken = line.substringAfter("=").trim().trim('"')
-                    }
+                if (json.has("apiKey") && !json.isNull("apiKey")) {
+                    gatewayToken = json.getString("apiKey")
                 }
             }
         } catch (e: Exception) {
             // Use defaults
+        }
+        // Also try .env fallback for backward compat
+        if (gatewayToken.isEmpty()) {
+            try {
+                val envFile = java.io.File("${filesDir.absolutePath}/hermes/.env")
+                if (envFile.exists()) {
+                    envFile.readLines().forEach { line ->
+                        if (line.startsWith("API_KEY="))
+                            gatewayToken = line.substringAfter("=").trim().trim('"')
+                    }
+                }
+            } catch (_: Exception) {}
         }
     }
 

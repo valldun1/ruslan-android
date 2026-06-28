@@ -13,15 +13,18 @@ data class ProviderConfig(
 ) {
     companion object {
         val BUILT_IN = listOf(
-            ProviderConfig("deepseek", "DeepSeek", defaultModel = "deepseek-chat"),
-            ProviderConfig("openai", "OpenAI", defaultModel = "gpt-4o"),
-            ProviderConfig("anthropic", "Anthropic", defaultModel = "claude-sonnet-4"),
-            ProviderConfig("openrouter", "OpenRouter", baseUrl = "https://openrouter.ai/api/v1"),
+            ProviderConfig("deepseek", "DeepSeek", baseUrl = "https://api.deepseek.com/v1", defaultModel = "deepseek-chat"),
+            ProviderConfig("deepseek-flash", "DeepSeek Flash", baseUrl = "https://api.deepseek.com/v1", defaultModel = "deepseek-v4-flash"),
+            ProviderConfig("opencode-go", "OpenCode Go", baseUrl = "https://opencode.ai/zen/go/v1", defaultModel = "deepseek-v4-flash"),
+            ProviderConfig("openai", "OpenAI", baseUrl = "https://api.openai.com/v1", defaultModel = "gpt-4o"),
+            ProviderConfig("anthropic", "Anthropic", baseUrl = "https://api.anthropic.com/v1", defaultModel = "claude-sonnet-4-20250514"),
+            ProviderConfig("openrouter", "OpenRouter", baseUrl = "https://openrouter.ai/api/v1", defaultModel = "deepseek/deepseek-chat"),
+            ProviderConfig("google", "Google Gemini", baseUrl = "https://generativelanguage.googleapis.com/v1beta", defaultModel = "gemini-2.0-flash"),
             ProviderConfig("glm", "GLM (Zhipu)", baseUrl = "https://open.bigmodel.cn/api/paas/v4", defaultModel = "glm-5.2"),
             ProviderConfig("qwen", "Qwen (Alibaba)", baseUrl = "https://dashscope.aliyuncs.com/compatible-mode/v1", defaultModel = "qwen-plus"),
-            ProviderConfig("yandex", "YandexGPT", defaultModel = "yandexgpt-lite"),
-            ProviderConfig("gigachat", "GigaChat (Sber)", defaultModel = "GigaChat-Max"),
-            ProviderConfig("custom", "Пользовательский", baseUrl = "https://"),
+            ProviderConfig("yandex", "YandexGPT", baseUrl = "https://api.yandex.ai/v1", defaultModel = "yandexgpt-lite"),
+            ProviderConfig("gigachat", "GigaChat (Sber)", baseUrl = "https://gigachat.devices.sberbank.ru/api/v1", defaultModel = "GigaChat-Max"),
+            ProviderConfig("custom", "Пользовательский", baseUrl = "https://", defaultModel = ""),
         )
     }
 }

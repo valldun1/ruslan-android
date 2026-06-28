@@ -122,17 +122,25 @@ class ProviderConfigActivity : AppCompatActivity() {
     }
 
     private fun generateEnv() {
-        val content = providerManager.generateEnvContent()
-        if (content.isNotEmpty()) {
-            // Write .env to app private files (Chaquopy config dir)
-            val envFile = java.io.File(filesDir, "hermes/.env")
-            try {
-                envFile.parentFile?.mkdirs()
-                envFile.writeText(content)
-                Toast.makeText(this, "✓ .env обновлён", Toast.LENGTH_SHORT).show()
-            } catch (e: Exception) {
-                Toast.makeText(this, "Ошибка записи .env: ${e.message}", Toast.LENGTH_LONG).show()
+        val active = providerManager.getActiveProvider()
+        if (active == null) {
+            Toast.makeText(this, "Нет активного провайдера", Toast.LENGTH_SHORT).show()
+            return
+        }
+        // Write proxy config JSON (читается Python прокси)
+        val configFile = java.io.File(filesDir, "hermes/ruslan-provider.json")
+        try {
+            configFile.parentFile?.mkdirs()
+            val json = org.json.JSONObject().apply {
+                put("provider", active.id)
+                put("apiKey", active.apiKey)
+                put("model", active.defaultModel)
+                put("baseUrl", active.baseUrl)
             }
+            configFile.writeText(json.toString(2))
+            Toast.makeText(this, "✓ Провайдер ${active.name} сохранён", Toast.LENGTH_SHORT).show()
+        } catch (e: Exception) {
+            Toast.makeText(this, "Ошибка: ${e.message}", Toast.LENGTH_LONG).show()
         }
     }
 

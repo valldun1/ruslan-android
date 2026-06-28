@@ -82,8 +82,12 @@ class SetupWizardActivity : AppCompatActivity() {
             id = selectedProvider,
             name = when (selectedProvider) {
                 "deepseek" -> "DeepSeek"
+                "deepseek-flash" -> "DeepSeek Flash"
+                "opencode-go" -> "OpenCode Go"
                 "openai" -> "OpenAI"
                 "anthropic" -> "Anthropic"
+                "openrouter" -> "OpenRouter"
+                "google" -> "Google Gemini"
                 else -> selectedProvider
             },
             apiKey = apiKey,
@@ -91,6 +95,21 @@ class SetupWizardActivity : AppCompatActivity() {
         )
         providerManager.addOrUpdateProvider(provider)
         providerManager.setActiveProvider(selectedProvider)
+
+        // Write proxy config JSON immediately
+        try {
+            val configFile = java.io.File(filesDir, "hermes/ruslan-provider.json")
+            configFile.parentFile?.mkdirs()
+            val json = org.json.JSONObject().apply {
+                put("provider", selectedProvider)
+                put("apiKey", apiKey)
+                put("baseUrl", "")
+                put("model", "")
+            }
+            configFile.writeText(json.toString(2))
+        } catch (e: Exception) {
+            // Non-critical - user can reconfigure in settings
+        }
 
         // Mark first run as completed
         val prefs = getSharedPreferences(MainActivity.PREFS_NAME, MODE_PRIVATE)
