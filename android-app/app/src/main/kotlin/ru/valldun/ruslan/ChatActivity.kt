@@ -232,11 +232,18 @@ class ChatActivity : AppCompatActivity() {
                 binding.tvConnectionStatus.text = "● online"
                 binding.tvConnectionStatus.setTextColor(getColor(R.color.success_green))
             } else {
+                // Show last proxy error if available
+                val proxyErr = GatewayService.lastProxyError
+                val errMsg = if (proxyErr != null) {
+                    "⚠ Gateway error: $proxyErr\n" +
+                    "Проверь настройки провайдера"
+                } else {
+                    "⚠ Gateway не отвечает на :9123\n" +
+                    "Проверь что gateway запущен"
+                }
                 adapter.addMessage(
                     ChatMessage(
-                        text = "⚠ Ошибка: gateway не отвечает\n" +
-                                "Проверь что gateway запущен\n" +
-                                "или настрой провайдера",
+                        text = errMsg,
                         isUser = false,
                         status = MessageStatus.ERROR
                     )
