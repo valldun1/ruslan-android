@@ -73,6 +73,12 @@
         app:iconSpaceReserved="false">
 
         <Preference
+            android:key="send_log"
+            android:title="Отправить лог"
+            android:summary="Лог файл разработчику"
+            android:icon="@drawable/ic_code" />
+
+        <Preference
             android:key="about"
             android:title="О приложении"
             android:summary="v0.17.0 — Руслан Agent"

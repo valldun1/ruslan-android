@@ -2,10 +2,13 @@ package ru.valldun.ruslan
 
 import android.content.Intent
 import android.os.Bundle
+import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.FileProvider
 import androidx.preference.Preference
 import androidx.preference.PreferenceFragmentCompat
 import androidx.preference.SwitchPreferenceCompat
+import java.io.File
 
 class SettingsActivity : AppCompatActivity() {
 
@@ -39,12 +42,40 @@ class SettingsActivity : AppCompatActivity() {
                 true
             }
 
+            // Send log
+            findPreference<Preference>("send_log")?.setOnPreferenceClickListener {
+                shareLog()
+                true
+            }
+
             // Auto-start preference
             findPreference<SwitchPreferenceCompat>("auto_start")?.setOnPreferenceChangeListener { _, newValue ->
                 val enabled = newValue as Boolean
                 val prefs = requireContext().getSharedPreferences(BootReceiver.PREFS_NAME, MODE_PRIVATE)
                 prefs.edit().putBoolean(BootReceiver.KEY_AUTO_START, enabled).apply()
                 true
+            }
+        }
+
+        private fun shareLog() {
+            val ctx = requireContext()
+            val logFile = Logger.getLogFile()
+            if (logFile == null || !logFile.exists()) {
+                Toast.makeText(ctx, "Лог-файл не найден", Toast.LENGTH_SHORT).show()
+                return
+            }
+            try {
+                val uri = FileProvider.getUriForFile(ctx, "${ctx.packageName}.fileprovider", logFile)
+                val intent = Intent(Intent.ACTION_SEND).apply {
+                    type = "text/plain"
+                    putExtra(Intent.EXTRA_STREAM, uri)
+                    putExtra(Intent.EXTRA_SUBJECT, "Ruslan Agent Log")
+                    putExtra(Intent.EXTRA_TEXT, "Лог-файл Ruslan Agent v0.17.0\nУстройство: ${android.os.Build.MODEL}\nAndroid: ${android.os.Build.VERSION.RELEASE}")
+                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                }
+                startActivity(Intent.createChooser(intent, "Отправить лог"))
+            } catch (e: Exception) {
+                Toast.makeText(ctx, "Ошибка: ${e.message}", Toast.LENGTH_LONG).show()
             }
         }
     }
