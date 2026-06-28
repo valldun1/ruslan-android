@@ -107,6 +107,7 @@ class GatewayService : Service() {
 
             if (result == "ok") {
                 Logger.i(TAG, "=== Ruslan Proxy started on :9123 ===")
+                _proxyReady = true
                 // The server runs in a daemon thread — this call returns immediately.
                 // We keep this thread alive to detect if the app is being killed.
                 while (isRunning) {
@@ -156,28 +157,21 @@ class GatewayService : Service() {
     }
 
     private fun checkProxyHealth(): Boolean {
-        val healthy = try {
-            val url = java.net.URL("http://127.0.0.1:9123/health")
-            val conn = url.openConnection() as java.net.HttpURLConnection
-            conn.connectTimeout = 3000
-            conn.readTimeout = 3000
-            val code = conn.responseCode
-            if (code == 200) {
-                val body = conn.inputStream.bufferedReader().readText()
-                Logger.d(TAG, "Health response: $body")
-                true
-            } else {
-                Logger.w(TAG, "Health check returned HTTP $code")
-                false
-            }
-        } catch (e: java.net.ConnectException) {
-            Logger.d(TAG, "Health check: connection refused (proxy may be starting)")
-            false
+        // Since the Python proxy runs in-process (Chaquopy), we don't need HTTP.
+        // Check the in-memory flag set by runProxyInChaquopy() after successful start.
+        if (_proxyReady) return true
+
+        // Fallback: try raw socket connect (no HTTP, avoids cleartext issues)
+        try {
+            val socket = java.net.Socket()
+            socket.connect(java.net.InetSocketAddress("127.0.0.1", 9123), 1000)
+            socket.close()
+            _proxyReady = true
+            return true
         } catch (e: Exception) {
-            Logger.d(TAG, "Health check exception: ${e.message}")
-            false
+            Logger.d(TAG, "Health check: socket connect failed (${e::class.simpleName}: ${e.message})")
+            return false
         }
-        return healthy
     }
 
     private fun restartProxy() {
@@ -205,6 +199,7 @@ class GatewayService : Service() {
     private fun stopGateway() {
         Logger.i(TAG, "stopGateway() called")
         isRunning = false
+        _proxyReady = false
         // Cancel wake-lock re-acquisition
         wakeLockReacquireTask?.let { wakeLockHandler?.removeCallbacks(it) }
         healthCheckTask?.let { healthCheckHandler?.removeCallbacks(it) }
@@ -328,5 +323,8 @@ class GatewayService : Service() {
         // Internal
         @Volatile
         private var _lastProxyError: String? = null
+
+        @Volatile
+        private var _proxyReady = false
     }
 }

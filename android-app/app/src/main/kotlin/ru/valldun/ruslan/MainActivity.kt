@@ -10,12 +10,7 @@ import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
-import androidx.lifecycle.lifecycleScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import ru.valldun.ruslan.databinding.ActivityMainBinding
-import java.net.URL
 
 class MainActivity : AppCompatActivity() {
 
@@ -128,39 +123,10 @@ class MainActivity : AppCompatActivity() {
         } ?: "—"
         binding.tvSessionsCount.text = "${pm.getAllProviders().size}"
 
-        // Real metrics from the proxy health endpoint
-        lifecycleScope.launch {
-            try {
-                val health = fetchHealth()
-                if (health != null) {
-                    val reqs = health.optString("requests", "")
-                    if (reqs.isNotEmpty()) binding.tvSessionsCount.text = reqs
-                    val uptime = health.optString("uptime", "")
-                    if (uptime.isNotEmpty()) binding.tvUptime.text = uptime
-                    val provider = health.optString("provider", "")
-                    val model = health.optString("model", "")
-                    if (provider.isNotEmpty() && model.isNotEmpty()) {
-                        binding.tvModelName.text = "$provider / $model"
-                    }
-                }
-            } catch (_: Exception) {
-                // keep defaults from config
-            }
-        }
-    }
-
-    private suspend fun fetchHealth(): org.json.JSONObject? = withContext(Dispatchers.IO) {
-        try {
-            val url = URL("http://127.0.0.1:9123/health")
-            val conn = url.openConnection() as java.net.HttpURLConnection
-            conn.connectTimeout = 3000
-            conn.readTimeout = 3000
-            if (conn.responseCode == 200) {
-                val text = conn.inputStream.bufferedReader().readText()
-                org.json.JSONObject(text)
-            } else null
-        } catch (_: Exception) {
-            null
+        // Get proxy status from the in-process flag (no HTTP needed)
+        val proxyOk = GatewayService.isRunning
+        if (proxyOk) {
+            binding.tvUptime.text = formatUptime((System.currentTimeMillis() - GatewayStartTime) / 1000)
         }
     }
 
