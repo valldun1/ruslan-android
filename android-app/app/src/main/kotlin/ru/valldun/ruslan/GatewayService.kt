@@ -17,7 +17,7 @@ import java.io.InputStreamReader
 
 class GatewayService : Service() {
 
-    private var gatewayProcess: Process? = null
+    private var proxyProcess: Process? = null
     private var logThread: Thread? = null
     private lateinit var wakeLock: PowerManager.WakeLock
     private var isRunning = false
@@ -55,123 +55,99 @@ class GatewayService : Service() {
     private fun startGateway() {
         isRunning = true
 
-        // Acquire wake lock
         if (!wakeLock.isHeld) {
-            wakeLock.acquire(10 * 60 * 1000L) // 10 minutes, will be renewed
+            wakeLock.acquire(10 * 60 * 1000L)
         }
 
-        // Start foreground with notification
         startForeground(NOTIFICATION_ID, createNotification())
 
-        // Start gateway in background thread
         Thread {
-            runGatewayLoop()
+            runProxyLoop()
         }.start()
     }
 
-    private fun runGatewayLoop() {
+    private fun runProxyLoop() {
         val prefix = TermuxBootstrap.getPrefixPath(this)
+        val proxyScript = "$prefix/scripts/ruslan-proxy.py"
         val homeDir = "$prefix/home"
+        val configDir = "$homeDir/.hermes"
+        val configFile = "$configDir/ruslan-provider.json"
 
         while (isRunning) {
             try {
-                Log.d(TAG, "Starting Ruslan gateway...")
+                Log.d(TAG, "Starting Ruslan API proxy...")
+
+                // Ensure config directory exists
+                java.io.File(configDir).mkdirs()
+
+                // Write provider config from SharedPreferences
+                val pm = ProviderManager(this)
+                val envContent = pm.generateEnvContent()
+                if (envContent.isNotEmpty()) {
+                    // Parse .env format to JSON config
+                    val active = pm.getActiveProvider()
+                    if (active != null) {
+                        val configJson = org.json.JSONObject().apply {
+                            put("provider", active.id)
+                            put("apiKey", active.apiKey)
+                            put("model", active.defaultModel)
+                            put("baseUrl", active.baseUrl)
+                        }
+                        java.io.File(configFile).writeText(configJson.toString(2))
+                        Log.d(TAG, "Config written: ${active.id} / ${active.defaultModel}")
+                    }
+                }
 
                 val env = mutableMapOf(
                     "PATH" to "$prefix/bin:$prefix/usr/bin",
-                    "LD_LIBRARY_PATH" to "$prefix/lib",
                     "HOME" to homeDir,
                     "TMPDIR" to "$prefix/tmp",
-                    "PREFIX" to prefix,
-                    "TERM" to "xterm-256color"
+                    "PREFIX" to prefix
                 )
-
-                // Load .env if exists
-                val envFile = "$homeDir/.env"
-                val envMap = loadEnvFile(envFile)
-                env.putAll(envMap)
 
                 val pb = ProcessBuilder(
                     "$prefix/bin/python3",
-                    "-m",
-                    "hermes_cli",
-                    "gateway",
-                    "run",
-                    "--accept-hooks",
-                    "--replace"
+                    proxyScript,
+                    "9123"
                 ).apply {
                     directory(java.io.File(homeDir))
                     environment().putAll(env)
                     redirectErrorStream(true)
                 }
 
-                gatewayProcess = pb.start()
+                proxyProcess = pb.start()
 
-                // Read logs
-                val reader = BufferedReader(InputStreamReader(gatewayProcess!!.inputStream))
+                val reader = BufferedReader(InputStreamReader(proxyProcess!!.inputStream))
                 var line: String?
                 while (reader.readLine().also { line = it } != null) {
-                    Log.d(TAG, "Gateway: $line")
-                    // TODO: Send logs to UI via Broadcast or LiveData
+                    Log.d(TAG, "Proxy: $line")
                 }
 
-                val exitCode = gatewayProcess?.waitFor()
-                Log.w(TAG, "Gateway exited with code: $exitCode")
+                val exitCode = proxyProcess?.waitFor()
+                Log.w(TAG, "Proxy exited with code: $exitCode")
 
                 if (!isRunning) break
-
-                // Restart delay
-                Log.d(TAG, "Restarting gateway in 5 seconds...")
                 Thread.sleep(5000)
 
             } catch (e: Exception) {
-                Log.e(TAG, "Gateway error", e)
+                Log.e(TAG, "Proxy error", e)
                 if (!isRunning) break
                 Thread.sleep(5000)
             }
         }
-    }
-
-    private fun loadEnvFile(path: String): Map<String, String> {
-        val env = mutableMapOf<String, String>()
-        try {
-            val file = java.io.File(path)
-            if (!file.exists()) return env
-
-            file.readLines().forEach { line ->
-                if (line.isBlank() || line.startsWith("#")) return@forEach
-                val parts = line.split("=", limit = 2)
-                if (parts.size == 2) {
-                    val key = parts[0].trim()
-                    var value = parts[1].trim()
-                    // Remove quotes if present
-                    if ((value.startsWith("\"") && value.endsWith("\"")) ||
-                        (value.startsWith("'") && value.endsWith("'"))) {
-                        value = value.substring(1, value.length - 1)
-                    }
-                    env[key] = value
-                }
-            }
-        } catch (e: Exception) {
-            Log.e(TAG, "Error loading .env", e)
-        }
-        return env
     }
 
     private fun stopGateway() {
         isRunning = false
-
         try {
-            gatewayProcess?.destroy()
-            gatewayProcess?.waitFor()
+            proxyProcess?.destroy()
+            proxyProcess?.waitFor()
         } catch (e: Exception) {
-            Log.e(TAG, "Error stopping gateway", e)
+            Log.e(TAG, "Error stopping proxy", e)
         }
-
         if (wakeLock.isHeld) {
             wakeLock.release()
         }
-
         stopForeground(STOP_FOREGROUND_REMOVE)
         stopSelf()
     }
@@ -186,7 +162,6 @@ class GatewayService : Service() {
                 description = getString(R.string.channel_description)
                 setShowBadge(false)
             }
-
             val manager = getSystemService(NotificationManager::class.java)
             manager.createNotificationChannel(channel)
         }
@@ -200,7 +175,6 @@ class GatewayService : Service() {
             this, 0, stopIntent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
-
         val restartIntent = Intent(this, NotificationActionReceiver::class.java).apply {
             action = ACTION_RESTART
         }
@@ -208,13 +182,11 @@ class GatewayService : Service() {
             this, 1, restartIntent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
-
         val contentIntent = Intent(this, MainActivity::class.java)
         val contentPendingIntent = PendingIntent.getActivity(
             this, 0, contentIntent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
-
         return NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle(getString(R.string.notification_title))
             .setContentText(getString(R.string.notification_text))

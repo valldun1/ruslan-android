@@ -24,7 +24,6 @@ class WizardStep4Fragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        // Toggle password visibility for token
         binding.btnToggleToken.setOnClickListener {
             val currentInputType = binding.etBotToken.inputType
             if (currentInputType == android.text.InputType.TYPE_CLASS_TEXT or
@@ -37,6 +36,8 @@ class WizardStep4Fragment : Fragment() {
             }
         }
     }
+
+    fun getBotToken(): String = binding.etBotToken.text?.toString()?.trim() ?: ""
 
     override fun onDestroyView() {
         super.onDestroyView()

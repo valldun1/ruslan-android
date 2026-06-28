@@ -12,6 +12,8 @@ class WizardStep2Fragment : Fragment() {
     private var _binding: FragmentWizardStep2Binding? = null
     private val binding get() = _binding!!
 
+    private var selectedProvider = "deepseek"
+
     override fun onCreateView(
         inflater: LayoutInflater,
         container: ViewGroup?,
@@ -24,7 +26,6 @@ class WizardStep2Fragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        // Provider selection
         binding.providerDeepseek.setOnClickListener {
             selectProvider("deepseek")
         }
@@ -35,23 +36,17 @@ class WizardStep2Fragment : Fragment() {
             selectProvider("anthropic")
         }
 
-        // Default selection
         selectProvider("deepseek")
     }
 
     private fun selectProvider(provider: String) {
-        // Reset all
-        binding.providerDeepseek.isChecked = false
-        binding.providerOpenai.isChecked = false
-        binding.providerAnthropic.isChecked = false
-
-        // Select one
-        when (provider) {
-            "deepseek" -> binding.providerDeepseek.isChecked = true
-            "openai" -> binding.providerOpenai.isChecked = true
-            "anthropic" -> binding.providerAnthropic.isChecked = true
-        }
+        binding.providerDeepseek.isChecked = provider == "deepseek"
+        binding.providerOpenai.isChecked = provider == "openai"
+        binding.providerAnthropic.isChecked = provider == "anthropic"
+        selectedProvider = provider
     }
+
+    fun getSelectedProvider(): String = selectedProvider
 
     override fun onDestroyView() {
         super.onDestroyView()

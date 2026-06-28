@@ -207,6 +207,20 @@ object TermuxBootstrap {
         } catch (e: Exception) {
             Log.w(TAG, "Could not copy env template", e)
         }
+
+        // Copy proxy script
+        try {
+            val scriptsDir = File(prefixDir, "scripts")
+            scriptsDir.mkdirs()
+            context.assets.open("scripts/ruslan-proxy.py").use { input ->
+                File(scriptsDir, "ruslan-proxy.py").outputStream().use { output ->
+                    input.copyTo(output)
+                }
+            }
+            Log.d(TAG, "Proxy script copied")
+        } catch (e: Exception) {
+            Log.w(TAG, "Could not copy proxy script", e)
+        }
     }
     
     private fun getAssetHash(context: Context): String? {

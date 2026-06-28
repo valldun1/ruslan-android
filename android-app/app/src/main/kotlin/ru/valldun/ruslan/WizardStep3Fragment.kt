@@ -24,7 +24,6 @@ class WizardStep3Fragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        // Toggle password visibility
         binding.btnTogglePassword.setOnClickListener {
             val currentInputType = binding.etApiKey.inputType
             if (currentInputType == android.text.InputType.TYPE_CLASS_TEXT or
@@ -37,6 +36,8 @@ class WizardStep3Fragment : Fragment() {
             }
         }
     }
+
+    fun getApiKey(): String = binding.etApiKey.text?.toString()?.trim() ?: ""
 
     override fun onDestroyView() {
         super.onDestroyView()

@@ -3,6 +3,7 @@ package ru.valldun.ruslan
 import android.content.Intent
 import android.os.Bundle
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.ContextCompat
 import androidx.viewpager2.widget.ViewPager2
 import com.google.android.material.tabs.TabLayoutMediator
 import ru.valldun.ruslan.databinding.ActivitySetupWizardBinding
@@ -16,21 +17,15 @@ class SetupWizardActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         binding = ActivitySetupWizardBinding.inflate(layoutInflater)
         setContentView(binding.root)
-
         setupWizard()
     }
 
     private fun setupWizard() {
         adapter = WizardPagerAdapter(this)
         binding.viewPager.adapter = adapter
-        binding.viewPager.isUserInputEnabled = false
 
-        // Tab indicators
-        TabLayoutMediator(binding.tabLayout, binding.viewPager) { _, _ ->
-            // Empty, just for dots
-        }.attach()
+        TabLayoutMediator(binding.tabLayout, binding.viewPager) { _, _ -> }.attach()
 
-        // Next/Done button
         binding.btnNext.setOnClickListener {
             val currentItem = binding.viewPager.currentItem
             if (currentItem < adapter.itemCount - 1) {
@@ -40,30 +35,79 @@ class SetupWizardActivity : AppCompatActivity() {
                 finishWizard()
             }
         }
-
-        binding.viewPager.registerOnPageChangeCallback(object : ViewPager2.OnPageChangeCallback() {
-            override fun onPageSelected(position: Int) {
-                updateButtonText()
-            }
-        })
     }
 
     private fun updateButtonText() {
         val isLastPage = binding.viewPager.currentItem == adapter.itemCount - 1
-        binding.btnNext.text = if (isLastPage) {
-            getString(R.string.done)
-        } else {
-            getString(R.string.next)
-        }
+        binding.btnNext.text = if (isLastPage) getString(R.string.done) else getString(R.string.next)
     }
 
     private fun finishWizard() {
+        // Collect data from wizard fragments
+        var selectedProvider = "deepseek"
+        var apiKey = ""
+        var botToken = ""
+
+        // Try to read Step 2 (provider selection)
+        try {
+            val step2 = adapter.getFragmentAt(1) // Fragment at position 1
+            if (step2 is WizardStep2Fragment) {
+                selectedProvider = step2.getSelectedProvider()
+            }
+        } catch (e: Exception) {
+            // Default: deepseek
+        }
+
+        // Try to read Step 3 (API key)
+        try {
+            val step3 = adapter.getFragmentAt(2)
+            if (step3 is WizardStep3Fragment) {
+                apiKey = step3.getApiKey()
+            }
+        } catch (e: Exception) {}
+
+        // Try to read Step 4 (Bot token)
+        try {
+            val step4 = adapter.getFragmentAt(3)
+            if (step4 is WizardStep4Fragment) {
+                botToken = step4.getBotToken()
+            }
+        } catch (e: Exception) {}
+
+        // Save provider config
+        val providerManager = ProviderManager(this)
+        providerManager.initDefaults()
+
+        val provider = ProviderConfig(
+            id = selectedProvider,
+            name = when (selectedProvider) {
+                "deepseek" -> "DeepSeek"
+                "openai" -> "OpenAI"
+                "anthropic" -> "Anthropic"
+                else -> selectedProvider
+            },
+            apiKey = apiKey,
+            isActive = true
+        )
+        providerManager.addOrUpdateProvider(provider)
+        providerManager.setActiveProvider(selectedProvider)
+
         // Mark first run as completed
         val prefs = getSharedPreferences(MainActivity.PREFS_NAME, MODE_PRIVATE)
         prefs.edit().putBoolean(MainActivity.KEY_FIRST_RUN, false).apply()
 
-        // Start main activity
-        startActivity(Intent(this, MainActivity::class.java))
+        // Start main activity with gateway service
+        val intent = Intent(this, MainActivity::class.java)
+        startActivity(intent)
+
+        // Start gateway service in background
+        try {
+            val serviceIntent = Intent(this, GatewayService::class.java)
+            ContextCompat.startForegroundService(this, serviceIntent)
+        } catch (e: Exception) {
+            // Ignore - user can start from settings
+        }
+
         finish()
     }
 }

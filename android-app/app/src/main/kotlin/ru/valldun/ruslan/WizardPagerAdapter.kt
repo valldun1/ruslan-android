@@ -6,15 +6,27 @@ import androidx.viewpager2.adapter.FragmentStateAdapter
 
 class WizardPagerAdapter(activity: FragmentActivity) : FragmentStateAdapter(activity) {
 
+    private val fragments = mutableListOf<Fragment>()
+
     override fun getItemCount(): Int = 4
 
     override fun createFragment(position: Int): Fragment {
-        return when (position) {
+        val fragment = when (position) {
             0 -> WizardStep1Fragment()
             1 -> WizardStep2Fragment()
             2 -> WizardStep3Fragment()
             3 -> WizardStep4Fragment()
             else -> throw IllegalArgumentException("Invalid position: $position")
         }
+        // Store for later access
+        while (fragments.size <= position) {
+            fragments.add(null as Fragment)
+        }
+        fragments[position] = fragment
+        return fragment
+    }
+
+    fun getFragmentAt(position: Int): Fragment? {
+        return if (position < fragments.size) fragments[position] else null
     }
 }
