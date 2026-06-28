@@ -17,6 +17,8 @@ class MessageAdapter(
         notifyItemInserted(messages.size - 1)
     }
 
+    fun getMessages(): List<ChatMessage> = messages.toList()
+
     fun updateMessages(newMessages: List<ChatMessage>) {
         messages.clear()
         messages.addAll(newMessages)

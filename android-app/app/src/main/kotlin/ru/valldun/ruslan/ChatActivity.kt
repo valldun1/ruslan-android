@@ -21,12 +21,14 @@ class ChatActivity : AppCompatActivity() {
     private lateinit var binding: ActivityChatBinding
     private lateinit var adapter: MessageAdapter
 
-    // Gateway connection config — reads from .env or defaults
+    // Gateway connection config — reads from JSON or defaults
     private var gatewayUrl = "http://127.0.0.1:9123"
     private var gatewayToken = ""
 
     companion object {
         private const val TAG = "ChatActivity"
+        private const val PREFS_HISTORY = "chat_history"
+        private const val KEY_HISTORY = "messages"
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -36,7 +38,7 @@ class ChatActivity : AppCompatActivity() {
 
         loadGatewayConfig()
         setupUI()
-        addWelcomeMessage()
+        loadHistory()
     }
 
     private fun loadGatewayConfig() {
@@ -72,7 +74,10 @@ class ChatActivity : AppCompatActivity() {
 
     private fun setupUI() {
         // Back button
-        binding.btnBack.setOnClickListener { finish() }
+        binding.btnBack.setOnClickListener {
+            saveHistory()
+            finish()
+        }
 
         // Setup RecyclerView
         adapter = MessageAdapter()
@@ -100,15 +105,91 @@ class ChatActivity : AppCompatActivity() {
                     isUser = true
                 )
             )
+            saveHistory()
         }
+
+        // Long-press on connection status — clear history
+        binding.tvConnectionStatus.setOnLongClickListener {
+            clearHistory()
+            true
+        }
+
+        // Menu — clear option on back-hold
+        binding.btnBack.setOnLongClickListener {
+            clearHistory()
+            true
+        }
+    }
+
+    private fun loadHistory() {
+        val prefs = getSharedPreferences(PREFS_HISTORY, MODE_PRIVATE)
+        val json = prefs.getString(KEY_HISTORY, null)
+        if (json != null) {
+            try {
+                val arr = org.json.JSONArray(json)
+                val msgs = mutableListOf<ChatMessage>()
+                for (i in 0 until arr.length()) {
+                    val obj = arr.getJSONObject(i)
+                    msgs.add(
+                        ChatMessage(
+                            text = obj.getString("text"),
+                            isUser = obj.getBoolean("isUser"),
+                            timestamp = obj.optLong("timestamp", System.currentTimeMillis()),
+                            status = try {
+                                MessageStatus.valueOf(obj.optString("status", "SENT"))
+                            } catch (_: Exception) { MessageStatus.SENT }
+                        )
+                    )
+                }
+                if (msgs.isNotEmpty()) {
+                    adapter.updateMessages(msgs)
+                    binding.rvMessages.scrollToPosition(adapter.itemCount - 1)
+                    return
+                }
+            } catch (_: Exception) {}
+        }
+        // No history — show welcome
+        addWelcomeMessage()
+    }
+
+    private fun saveHistory() {
+        val msgs = adapter.getMessages()
+        if (msgs.isEmpty()) return
+        try {
+            val arr = org.json.JSONArray()
+            for (msg in msgs) {
+                val obj = org.json.JSONObject()
+                obj.put("text", msg.text)
+                obj.put("isUser", msg.isUser)
+                obj.put("timestamp", msg.timestamp)
+                obj.put("status", msg.status.name)
+                arr.put(obj)
+            }
+            getSharedPreferences(PREFS_HISTORY, MODE_PRIVATE)
+                .edit()
+                .putString(KEY_HISTORY, arr.toString())
+                .apply()
+        } catch (_: Exception) {}
+    }
+
+    private fun clearHistory() {
+        getSharedPreferences(PREFS_HISTORY, MODE_PRIVATE)
+            .edit()
+            .remove(KEY_HISTORY)
+            .apply()
+        adapter.updateMessages(mutableListOf())
+        addWelcomeMessage()
+        binding.rvMessages.scrollToPosition(adapter.itemCount - 1)
     }
 
     private fun addWelcomeMessage() {
         adapter.addMessage(
             ChatMessage(
-                text = "> Руслан Agent v0.17.0\n" +
+                text = "> Руслан Agent v0.18.0\n" +
                         "> Терминал: ${gatewayUrl}\n" +
-                        "> Введи команду или вопрос",
+                        "> Введи команду или вопрос\n" +
+                        ">\n" +
+                        "> 💡 Долгое нажатие на статус — очистить чат",
                 isUser = false,
                 status = MessageStatus.SENT
             )
@@ -131,6 +212,8 @@ class ChatActivity : AppCompatActivity() {
         // Hide keyboard
         binding.etMessage.clearFocus()
 
+        saveHistory()
+
         // Send to gateway
         binding.tvConnectionStatus.text = "● thinking..."
         binding.tvConnectionStatus.setTextColor(getColor(R.color.warning_yellow))
@@ -145,6 +228,7 @@ class ChatActivity : AppCompatActivity() {
                         isUser = false
                     )
                 )
+                saveHistory()
                 binding.tvConnectionStatus.text = "● online"
                 binding.tvConnectionStatus.setTextColor(getColor(R.color.success_green))
             } else {
@@ -157,6 +241,7 @@ class ChatActivity : AppCompatActivity() {
                         status = MessageStatus.ERROR
                     )
                 )
+                saveHistory()
                 binding.tvConnectionStatus.text = "● offline"
                 binding.tvConnectionStatus.setTextColor(getColor(R.color.error_red))
             }
