@@ -45,6 +45,20 @@
     kotlinx.serialization.KSerializer serializer(...);
 }
 
+# Keep Chaquopy Python native library
+-keep class com.chaquo.python.** { *; }
+-keep class com.chaquo.python.android.** { *; }
+-dontwarn com.chaquo.python.**
+
+# Keep Chaquopy JNI entries
+-keepclasseswithmembernames class * {
+    native <methods>;
+}
+
+# Keep Kotlin runtime
+-keep class kotlin.** { *; }
+-dontwarn kotlin.**
+
 # Remove logging in release (keep errors for crash reporting)
 -assumenosideeffects class android.util.Log {
     public static *** d(...);
