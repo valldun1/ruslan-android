@@ -56,7 +56,7 @@
     </style>
 
     <!-- No ActionBar variant -->
-    <style name="Theme.Ruslan.NoActionBar">
+    <style name="Theme.Ruslan.NoActionBar" parent="Theme.Ruslan">
         <item name="windowActionBar">false</item>
         <item name="windowNoTitle">true</item>
     </style>

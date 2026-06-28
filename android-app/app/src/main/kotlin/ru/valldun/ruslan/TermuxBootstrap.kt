@@ -4,7 +4,9 @@ import android.content.Context
 import android.util.Log
 import java.io.*
 import java.security.MessageDigest
-import java.util.zip.ZipInputStream
+import org.apache.commons.compress.archivers.tar.TarArchiveEntry
+import org.apache.commons.compress.archivers.tar.TarArchiveInputStream
+import org.apache.commons.compress.compressors.zstandard.ZstdCompressorInputStream
 
 object TermuxBootstrap {
     
@@ -130,30 +132,30 @@ object TermuxBootstrap {
     }
     
     private fun extractZstdTar(archive: File, destination: File) {
-        // Use zstd binary from assets or system
-        val process = ProcessBuilder(
-            "zstd", "-d", "-c", archive.absolutePath
-        ).start()
-        
-        // Pipe to tar
-        val tarProcess = ProcessBuilder(
-            "tar", "-xf", "-", "-C", destination.absolutePath
-        ).apply {
-            redirectInput(ProcessBuilder.Redirect.PIPE)
-        }.start()
-        
-        // Connect streams
-        process.inputStream.use { input ->
-            tarProcess.outputStream.use { output ->
-                input.copyTo(output)
+        FileInputStream(archive).use { fis ->
+            BufferedInputStream(fis).use { bis ->
+                ZstdCompressorInputStream(bis).use { zis ->
+                    TarArchiveInputStream(zis).use { tis ->
+                        var entry: TarArchiveEntry? = tis.nextTarEntry
+                        while (entry != null) {
+                            val outputFile = File(destination, entry.name)
+                            if (entry.isDirectory) {
+                                outputFile.mkdirs()
+                            } else {
+                                outputFile.parentFile?.mkdirs()
+                                FileOutputStream(outputFile).use { fos ->
+                                    tis.copyTo(fos)
+                                }
+                                // Preserve executable bit
+                                val mode = entry.mode
+                                if (mode and 64 != 0) outputFile.setExecutable(true, false)
+                                if (mode and 128 != 0) outputFile.setExecutable(true, true)
+                            }
+                            entry = tis.nextTarEntry
+                        }
+                    }
+                }
             }
-        }
-        
-        val zstdExit = process.waitFor()
-        val tarExit = tarProcess.waitFor()
-        
-        if (zstdExit != 0 || tarExit != 0) {
-            throw IOException("Extraction failed: zstd=$zstdExit, tar=$tarExit")
         }
     }
     

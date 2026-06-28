@@ -71,6 +71,10 @@ dependencies {
     implementation("androidx.activity:activity-ktx:1.8.2")
     implementation("androidx.preference:preference-ktx:1.2.1")
     implementation("androidx.viewpager2:viewpager2:1.0.0")
+
+    // Prefix extraction (zstd + tar)
+    implementation("com.github.luben:zstd-jni:1.5.6-9")
+    implementation("org.apache.commons:commons-compress:1.26.1")
     
     // Testing
     testImplementation("junit:junit:4.13.2")
