@@ -40,11 +40,9 @@ class ChatActivity : AppCompatActivity() {
     }
 
     private fun loadGatewayConfig() {
-        // Try to read gateway URL from the Termux home .env
+        // Chaquopy: config is in app's private files directory
         try {
-            val envFile = java.io.File(
-                "${TermuxBootstrap.getPrefixPath(this)}/home/.env"
-            )
+            val envFile = java.io.File("${filesDir.absolutePath}/hermes/.env")
             if (envFile.exists()) {
                 envFile.readLines().forEach { line ->
                     if (line.startsWith("GATEWAY_URL="))
@@ -53,6 +51,18 @@ class ChatActivity : AppCompatActivity() {
                         gatewayToken = line.substringAfter("=").trim().trim('"')
                     if (line.startsWith("API_KEY=") && gatewayToken.isEmpty())
                         gatewayToken = line.substringAfter("=").trim().trim('"')
+                }
+            }
+            // Also check old Termux-style path for migration
+            if (gatewayUrl == "http://127.0.0.1:9123" && gatewayToken.isEmpty()) {
+                val oldEnv = java.io.File("/data/data/com.termux/files/home/.env")
+                if (oldEnv.exists()) {
+                    oldEnv.readLines().forEach { line ->
+                        if (line.startsWith("GATEWAY_URL="))
+                            gatewayUrl = line.substringAfter("=").trim().trim('"')
+                        if (line.startsWith("API_KEY=") && gatewayToken.isEmpty())
+                            gatewayToken = line.substringAfter("=").trim().trim('"')
+                    }
                 }
             }
         } catch (e: Exception) {

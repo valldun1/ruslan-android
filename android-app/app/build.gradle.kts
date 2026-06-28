@@ -1,6 +1,7 @@
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
+    id("com.chaquo.python")
 }
 
 android {
@@ -11,14 +12,33 @@ android {
         applicationId = "ru.valldun.ruslan"
         minSdk = 24
         targetSdk = 34
-        versionCode = 1
-        versionName = "0.17.0"
+        versionCode = 2
+        versionName = "0.18.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-        
-        // Only ARM64 for now (most modern phones)
+
+        // ARM64 + ARM32 (for older test devices like huaqin GC02)
         ndk {
-            abiFilters.add("arm64-v8a")
+            abiFilters += listOf("armeabi-v7a", "arm64-v8a", "x86", "x86_64")
+        }
+
+        // Chaquopy: Python 3.11
+        python {
+            version = "3.11"
+            pip {
+                // Core dependencies (pure Python — fast install)
+                install("httpx==0.27.0")
+                install("PyYAML==6.0.1")
+                install("python-dotenv==1.0.1")
+                install("certifi>=2024.0.0")
+
+                // Native extensions (compiled for aarch64 by Chaquopy)
+                install("pydantic==2.13.4")
+                install("openai==2.24.0")
+
+                // Web server (for proxy)
+                install("uvicorn==0.29.0")
+            }
         }
     }
 
@@ -50,14 +70,16 @@ android {
         viewBinding = true
     }
 
-    // Do not compress zst (already compressed)
-    aaptOptions {
-        noCompress("zst")
-    }
+    // Chaquopy: keep .so files unpacked
+    android.buildFeatures.prefab = true
 
     packaging {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
+        }
+        // Chaquopy native libs should not be compressed
+        jniLibs {
+            useLegacyPackaging = true
         }
     }
 }
@@ -72,10 +94,6 @@ dependencies {
     implementation("androidx.preference:preference-ktx:1.2.1")
     implementation("androidx.viewpager2:viewpager2:1.0.0")
 
-    // Prefix extraction (zstd + tar)
-    implementation("com.github.luben:zstd-jni:1.5.6-9")
-    implementation("org.apache.commons:commons-compress:1.26.1")
-    
     // Testing
     testImplementation("junit:junit:4.13.2")
     androidTestImplementation("androidx.test.ext:junit:1.1.5")

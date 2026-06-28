@@ -17,11 +17,7 @@ class BootReceiver : BroadcastReceiver() {
 
             if (autoStart) {
                 Log.d(TAG, "Auto-starting gateway service")
-
-                // Ensure prefix is extracted
-                TermuxBootstrap.ensurePrefix(context)
-
-                // Start gateway service
+                // Chaquopy Python starts inside GatewayService automatically
                 val serviceIntent = Intent(context, GatewayService::class.java)
                 ContextCompat.startForegroundService(context, serviceIntent)
             } else {

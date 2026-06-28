@@ -8,21 +8,26 @@ import android.app.Service
 import android.content.Context
 import android.content.Intent
 import android.os.Build
+import android.os.Handler
 import android.os.IBinder
+import android.os.Looper
 import android.os.PowerManager
 import android.util.Log
 import androidx.core.app.NotificationCompat
-import java.io.BufferedReader
-import java.io.InputStreamReader
+import com.chaquo.python.Python
+import com.chaquo.python.android.AndroidPlatform
 
+/**
+ * GatewayService — runs the Ruslan proxy as foreground service.
+ * Uses Chaquopy (in-process Python) instead of Termux subprocess.
+ */
 class GatewayService : Service() {
 
-    private var proxyProcess: Process? = null
-    private var logThread: Thread? = null
     private lateinit var wakeLock: PowerManager.WakeLock
-    private var isRunning = false
-    private var wakeLockHandler: android.os.Handler? = null
+    private var wakeLockHandler: Handler? = null
     private var wakeLockReacquireTask: Runnable? = null
+    private var healthCheckHandler: Handler? = null
+    private var healthCheckTask: Runnable? = null
 
     override fun onCreate() {
         super.onCreate()
@@ -32,6 +37,11 @@ class GatewayService : Service() {
             PowerManager.PARTIAL_WAKE_LOCK,
             "Ruslan::GatewayWakeLock"
         )
+
+        // Initialize Chaquopy Python
+        if (!Python.isStarted()) {
+            AndroidPlatform.start(this, AndroidPlatform(this))
+        }
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -56,102 +66,92 @@ class GatewayService : Service() {
 
     private fun startGateway() {
         isRunning = true
-
-        // Acquire wake-lock with periodic re-acquisition (every 9 min within 10 min timeout)
         acquireWakeLock()
-
         startForeground(NOTIFICATION_ID, createNotification())
 
         Thread {
-            runProxyLoop()
+            runProxyInChaquopy()
         }.start()
+
+        // Start health check polling
+        startHealthCheck()
     }
 
-    private fun acquireWakeLock() {
-        if (!wakeLock.isHeld) {
-            wakeLock.acquire(10 * 60 * 1000L) // 10 minute max
-        }
-        // Schedule re-acquisition at 9 minutes to prevent timeout
-        wakeLockHandler = wakeLockHandler ?: android.os.Handler(mainLooper)
-        wakeLockReacquireTask?.let { wakeLockHandler?.removeCallbacks(it) }
-        wakeLockReacquireTask = Runnable {
-            if (isRunning) {
-                if (wakeLock.isHeld) wakeLock.release()
-                wakeLock.acquire(10 * 60 * 1000L)
-                acquireWakeLock() // re-schedule
+    private fun runProxyInChaquopy() {
+        try {
+            val py = Python.getInstance()
+            val module = py.getModule("ruslan_proxy")
+
+            // Config directory — app private files
+            val configDir = filesDir.resolve("hermes").absolutePath
+
+            // Start the proxy server
+            val result = module.callAttr("start_server", 9123, configDir).toString()
+            Log.i(TAG, "Proxy start result: $result")
+
+            if (result == "ok") {
+                Log.i(TAG, "=== Ruslan Proxy started on :9123 ===")
+                // The server runs in a daemon thread — this call returns immediately.
+                // We keep this thread alive to detect if the app is being killed.
+                while (isRunning) {
+                    Thread.sleep(30_000)
+                    // Periodic heartbeat
+                    if (!isRunning) break
+                }
+            } else if (result == "already_running") {
+                Log.i(TAG, "Proxy already running — reusing")
+                while (isRunning) {
+                    Thread.sleep(30_000)
+                    if (!isRunning) break
+                }
+            } else {
+                Log.e(TAG, "Proxy failed to start: $result")
             }
+        } catch (e: Exception) {
+            Log.e(TAG, "Python proxy error", e)
+            _lastProxyError = e.message
         }
-        wakeLockHandler?.postDelayed(wakeLockReacquireTask!!, 9 * 60 * 1000L)
     }
 
-    private fun runProxyLoop() {
-        val prefix = TermuxBootstrap.getPrefixPath(this)
-        val proxyScript = "$prefix/scripts/ruslan-proxy.py"
-        val homeDir = "$prefix/home"
-        val configDir = "$homeDir/.hermes"
-        val configFile = "$configDir/ruslan-provider.json"
-
-        while (isRunning) {
-            try {
-                Log.d(TAG, "Starting Ruslan API proxy...")
-
-                // Ensure config directory exists
-                java.io.File(configDir).mkdirs()
-
-                // Write provider config from SharedPreferences
-                val pm = ProviderManager(this)
-                val envContent = pm.generateEnvContent()
-                if (envContent.isNotEmpty()) {
-                    // Parse .env format to JSON config
-                    val active = pm.getActiveProvider()
-                    if (active != null) {
-                        val configJson = org.json.JSONObject().apply {
-                            put("provider", active.id)
-                            put("apiKey", active.apiKey)
-                            put("model", active.defaultModel)
-                            put("baseUrl", active.baseUrl)
-                        }
-                        java.io.File(configFile).writeText(configJson.toString(2))
-                        Log.d(TAG, "Config written: ${active.id} / ${active.defaultModel}")
-                    }
+    private fun startHealthCheck() {
+        healthCheckHandler = healthCheckHandler ?: Handler(Looper.getMainLooper())
+        healthCheckTask = object : Runnable {
+            override fun run() {
+                if (!isRunning) return
+                val healthy = checkProxyHealth()
+                if (!healthy) {
+                    Log.w(TAG, "Proxy health check failed — restarting...")
+                    restartProxy()
                 }
-
-                val env = mutableMapOf(
-                    "PATH" to "$prefix/bin:$prefix/usr/bin",
-                    "HOME" to homeDir,
-                    "TMPDIR" to "$prefix/tmp",
-                    "PREFIX" to prefix
-                )
-
-                val pb = ProcessBuilder(
-                    "$prefix/bin/python3",
-                    proxyScript,
-                    "9123"
-                ).apply {
-                    directory(java.io.File(homeDir))
-                    environment().putAll(env)
-                    redirectErrorStream(true)
-                }
-
-                proxyProcess = pb.start()
-
-                val reader = BufferedReader(InputStreamReader(proxyProcess!!.inputStream))
-                var line: String?
-                while (reader.readLine().also { line = it } != null) {
-                    Log.d(TAG, "Proxy: $line")
-                }
-
-                val exitCode = proxyProcess?.waitFor()
-                Log.w(TAG, "Proxy exited with code: $exitCode")
-
-                if (!isRunning) break
-                Thread.sleep(5000)
-
-            } catch (e: Exception) {
-                Log.e(TAG, "Proxy error", e)
-                if (!isRunning) break
-                Thread.sleep(5000)
+                healthCheckHandler?.postDelayed(this, 30_000) // every 30 seconds
             }
+        }
+        healthCheckHandler?.postDelayed(healthCheckTask!!, 10_000)
+    }
+
+    private fun checkProxyHealth(): Boolean {
+        return try {
+            val url = java.net.URL("http://127.0.0.1:9123/health")
+            val conn = url.openConnection() as java.net.HttpURLConnection
+            conn.connectTimeout = 2000
+            conn.readTimeout = 2000
+            conn.responseCode == 200
+        } catch (_: Exception) {
+            false
+        }
+    }
+
+    private fun restartProxy() {
+        try {
+            val py = Python.getInstance()
+            val module = py.getModule("ruslan_proxy")
+            module.callAttr("stop_server")
+            Thread.sleep(1000)
+            val configDir = filesDir.resolve("hermes").absolutePath
+            module.callAttr("start_server", 9123, configDir)
+            Log.i(TAG, "Proxy restarted")
+        } catch (e: Exception) {
+            Log.e(TAG, "Proxy restart failed", e)
         }
     }
 
@@ -159,17 +159,41 @@ class GatewayService : Service() {
         isRunning = false
         // Cancel wake-lock re-acquisition
         wakeLockReacquireTask?.let { wakeLockHandler?.removeCallbacks(it) }
+        healthCheckTask?.let { healthCheckHandler?.removeCallbacks(it) }
+
+        // Stop Python proxy
         try {
-            proxyProcess?.destroy()
-            proxyProcess?.waitFor()
+            if (Python.isStarted()) {
+                val py = Python.getInstance()
+                val module = py.getModule("ruslan_proxy")
+                module.callAttr("stop_server")
+                Log.i(TAG, "Proxy stopped")
+            }
         } catch (e: Exception) {
             Log.e(TAG, "Error stopping proxy", e)
         }
+
         if (wakeLock.isHeld) {
             wakeLock.release()
         }
         stopForeground(STOP_FOREGROUND_REMOVE)
         stopSelf()
+    }
+
+    private fun acquireWakeLock() {
+        if (!wakeLock.isHeld) {
+            wakeLock.acquire(10 * 60 * 1000L)
+        }
+        wakeLockHandler = wakeLockHandler ?: Handler(Looper.getMainLooper())
+        wakeLockReacquireTask?.let { wakeLockHandler?.removeCallbacks(it) }
+        wakeLockReacquireTask = Runnable {
+            if (isRunning) {
+                if (wakeLock.isHeld) wakeLock.release()
+                wakeLock.acquire(10 * 60 * 1000L)
+                acquireWakeLock()
+            }
+        }
+        wakeLockHandler?.postDelayed(wakeLockReacquireTask!!, 9 * 60 * 1000L)
     }
 
     private fun createNotificationChannel() {
@@ -235,5 +259,26 @@ class GatewayService : Service() {
         @Volatile
         var isRunning = false
             private set
+
+        @Volatile
+        var lastProxyError: String? = null
+            private set
+            get() {
+                val v = field
+                // Also read from Python if possible
+                if (v == null && Python.isStarted()) {
+                    try {
+                        val py = Python.getInstance()
+                        val mod = py.getModule("ruslan_proxy")
+                        // get_status() returns a dict
+                        field = null // not stored here for now
+                    } catch (_: Exception) {}
+                }
+                return v
+            }
+
+        // Internal
+        @Volatile
+        private var _lastProxyError: String? = null
     }
 }

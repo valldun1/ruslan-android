@@ -36,8 +36,7 @@ class MainActivity : AppCompatActivity() {
         // Request battery optimization exemption (HyperOS fix)
         requestBatteryOptimizationExemption()
 
-        // Ensure Termux prefix is extracted
-        TermuxBootstrap.ensurePrefix(this)
+        // Chaquopy Python is started inside GatewayService — no Termux extraction needed
 
         setupUI()
         updateStatus()
