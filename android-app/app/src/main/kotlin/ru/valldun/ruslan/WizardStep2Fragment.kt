@@ -5,6 +5,7 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.RadioButton
+import android.widget.RadioGroup
 import androidx.fragment.app.Fragment
 import ru.valldun.ruslan.databinding.FragmentWizardStep2Binding
 
@@ -44,12 +45,12 @@ class WizardStep2Fragment : Fragment() {
                 text = cfg.name
                 textSize = 16f
                 setTextColor(ctx.getColor(R.color.text_primary))
-                layoutParams = RadioGroup.LayoutParams(
+                val lp = RadioGroup.LayoutParams(
                     RadioGroup.LayoutParams.MATCH_PARENT,
                     RadioGroup.LayoutParams.WRAP_CONTENT
-                ).apply {
-                    setMargins(0, 0, 0, 12)
-                }
+                )
+                lp.setMargins(0, 0, 0, 12)
+                layoutParams = lp
                 setOnClickListener {
                     selectProvider(cfg.id)
                 }
