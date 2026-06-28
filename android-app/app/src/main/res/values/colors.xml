@@ -32,7 +32,11 @@
     <color name="btn_primary_text">#0a0a0a</color>
     <color name="btn_secondary_bg">#00ff88</color>
     <color name="btn_secondary_text">#0a0a0a</color>
+<<<<<<< HEAD
     <color name="btn_secondary_stroke">#0a0a0a</color>
+=======
+    <color name="btn_secondary_stroke">#00ff88</color>
+>>>>>>> 48b7690 (v0.20.0: black button text, RAM stats, model row, cleartext fix)
 
     <!-- Border -->
     <color name="border">#1a1a1a</color>

@@ -1,7 +1,9 @@
 package ru.valldun.ruslan
 
 import android.content.Intent
+import android.graphics.Color
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import android.os.PowerManager
 import android.provider.Settings
@@ -39,7 +41,8 @@ class MainActivity : AppCompatActivity() {
         // Request battery optimization exemption (HyperOS fix)
         requestBatteryOptimizationExemption()
 
-        // Chaquopy Python is started inside GatewayService — no Termux extraction needed
+        // Ensure Termux prefix is extracted
+        TermuxBootstrap.ensurePrefix(this)
 
         setupUI()
         updateStatus()
@@ -110,26 +113,42 @@ class MainActivity : AppCompatActivity() {
             binding.tvGatewayStatus.text = getString(R.string.gateway_stopped)
         }
 
-        // Update stats (placeholder - would read from service)
+        // Update stats
         updateStats()
     }
 
     private fun updateStats() {
-        // Read real metrics from the proxy health endpoint
+        // Real JVM RAM usage (always available)
+        val runtime = Runtime.getRuntime()
+        val usedMb = (runtime.totalMemory() - runtime.freeMemory()) / (1024 * 1024)
+        val totalMb = runtime.totalMemory() / (1024 * 1024)
+        binding.tvRamUsage.text = "${usedMb}MB / ${totalMb}MB"
+
+        // Model name from config
+        val pm = ProviderManager(this)
+        val activeProvider = pm.getActiveProvider()
+        binding.tvModelName.text = activeProvider?.let {
+            "${it.name} / ${it.defaultModel}"
+        } ?: "—"
+        binding.tvSessionsCount.text = "${pm.getAllProviders().size}"
+
+        // Real metrics from the proxy health endpoint
         lifecycleScope.launch {
             try {
                 val health = fetchHealth()
                 if (health != null) {
-                    binding.tvSessionsCount.text = health.optString("requests", "0")
+                    val reqs = health.optString("requests", "")
+                    if (reqs.isNotEmpty()) binding.tvSessionsCount.text = reqs
+                    val uptime = health.optString("uptime", "")
+                    if (uptime.isNotEmpty()) binding.tvUptime.text = uptime
                     val provider = health.optString("provider", "")
                     val model = health.optString("model", "")
-                    if (provider.isNotEmpty()) {
-                        binding.tvMemoryPercent.text = if (model.isNotEmpty()) "$provider / $model" else provider
+                    if (provider.isNotEmpty() && model.isNotEmpty()) {
+                        binding.tvModelName.text = "$provider / $model"
                     }
-                    binding.tvUptime.text = health.optString("uptime", "--")
                 }
             } catch (_: Exception) {
-                // keep defaults
+                // keep defaults from config
             }
         }
     }
@@ -157,7 +176,7 @@ class MainActivity : AppCompatActivity() {
     private fun requestBatteryOptimizationExemption() {
         val pm = getSystemService(POWER_SERVICE) as PowerManager
         if (!pm.isIgnoringBatteryOptimizations(packageName)) {
-            AlertDialog.Builder(this)
+            val dialog = AlertDialog.Builder(this)
                 .setTitle(R.string.battery_opt_title)
                 .setMessage(R.string.battery_opt_message)
                 .setPositiveButton(R.string.go_to_settings) { _, _ ->
@@ -168,11 +187,27 @@ class MainActivity : AppCompatActivity() {
                 }
                 .setNegativeButton(R.string.later, null)
                 .show()
+
+            // Force button text to black on HyperOS
+            dialog.getButton(AlertDialog.BUTTON_POSITIVE)?.setTextColor(Color.BLACK)
+            dialog.getButton(AlertDialog.BUTTON_NEGATIVE)?.setTextColor(Color.BLACK)
         }
     }
 
     companion object {
         const val PREFS_NAME = "ruslan_prefs"
         const val KEY_FIRST_RUN = "first_run"
+        val GatewayStartTime = System.currentTimeMillis()
+    }
+
+    private fun formatUptime(sec: Long): String {
+        val days = sec / 86400
+        val hours = (sec % 86400) / 3600
+        val minutes = (sec % 3600) / 60
+        return when {
+            days > 0 -> "${days}д ${hours}ч"
+            hours > 0 -> "${hours}ч ${minutes}м"
+            else -> "${minutes}м"
+        }
     }
 }
