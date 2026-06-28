@@ -91,3 +91,4 @@ jobs:
         with:
           files: ruslan-agent.apk
           generate_release_notes: true
+# trigger
