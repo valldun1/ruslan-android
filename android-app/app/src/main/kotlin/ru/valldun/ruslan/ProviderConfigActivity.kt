@@ -124,10 +124,8 @@ class ProviderConfigActivity : AppCompatActivity() {
     private fun generateEnv() {
         val content = providerManager.generateEnvContent()
         if (content.isNotEmpty()) {
-            // Write .env to Hermes home
-            val envFile = java.io.File(
-                "${TermuxBootstrap.getPrefixPath(this)}/home/.env"
-            )
+            // Write .env to app private files (Chaquopy config dir)
+            val envFile = java.io.File(filesDir, "hermes/.env")
             try {
                 envFile.parentFile?.mkdirs()
                 envFile.writeText(content)

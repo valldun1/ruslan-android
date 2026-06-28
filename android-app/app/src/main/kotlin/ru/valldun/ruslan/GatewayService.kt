@@ -40,7 +40,7 @@ class GatewayService : Service() {
 
         // Initialize Chaquopy Python
         if (!Python.isStarted()) {
-            AndroidPlatform.start(this, AndroidPlatform(this))
+            Python.start(AndroidPlatform(this))
         }
     }
 
