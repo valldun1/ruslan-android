@@ -15,6 +15,7 @@ class SetupWizardActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        Logger.i("SetupWizard", "Wizard started")
         binding = ActivitySetupWizardBinding.inflate(layoutInflater)
         setContentView(binding.root)
         setupWizard()

@@ -23,6 +23,9 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        Logger.init(this)
+        Logger.i("Main", "App started")
+
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 

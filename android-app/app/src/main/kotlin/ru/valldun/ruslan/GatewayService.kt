@@ -31,6 +31,7 @@ class GatewayService : Service() {
 
     override fun onCreate() {
         super.onCreate()
+        Logger.i(TAG, "Service onCreate")
         createNotificationChannel()
         val powerManager = getSystemService(Context.POWER_SERVICE) as PowerManager
         wakeLock = powerManager.newWakeLock(
@@ -40,23 +41,33 @@ class GatewayService : Service() {
 
         // Initialize Chaquopy Python
         if (!Python.isStarted()) {
-            Python.start(AndroidPlatform(this))
+            Logger.i(TAG, "Starting Chaquopy Python...")
+            try {
+                Python.start(AndroidPlatform(this))
+                Logger.i(TAG, "Chaquopy Python started")
+            } catch (e: Exception) {
+                Logger.e(TAG, "Chaquopy init failed", e)
+                _lastProxyError = "Python init: ${e.message}"
+            }
         }
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         when (intent?.action) {
             ACTION_STOP -> {
+                Logger.i(TAG, "Received STOP action")
                 stopGateway()
                 return START_NOT_STICKY
             }
             ACTION_RESTART -> {
+                Logger.i(TAG, "Received RESTART action")
                 stopGateway()
                 startGateway()
                 return START_STICKY
             }
             else -> {
                 if (!isRunning) {
+                    Logger.i(TAG, "Starting gateway (no action)")
                     startGateway()
                 }
             }
@@ -65,6 +76,7 @@ class GatewayService : Service() {
     }
 
     private fun startGateway() {
+        Logger.i(TAG, "startGateway() called")
         isRunning = true
         acquireWakeLock()
         startForeground(NOTIFICATION_ID, createNotification())
@@ -78,19 +90,22 @@ class GatewayService : Service() {
     }
 
     private fun runProxyInChaquopy() {
+        Logger.i(TAG, "runProxyInChaquopy() starting...")
         try {
             val py = Python.getInstance()
             val module = py.getModule("ruslan_proxy")
+            Logger.d(TAG, "Got Python module: ruslan_proxy")
 
             // Config directory — app private files
             val configDir = filesDir.resolve("hermes").absolutePath
+            Logger.i(TAG, "Calling start_server(9123, $configDir)")
 
             // Start the proxy server
             val result = module.callAttr("start_server", 9123, configDir).toString()
-            Log.i(TAG, "Proxy start result: $result")
+            Logger.i(TAG, "Proxy start result: $result")
 
             if (result == "ok") {
-                Log.i(TAG, "=== Ruslan Proxy started on :9123 ===")
+                Logger.i(TAG, "=== Ruslan Proxy started on :9123 ===")
                 // The server runs in a daemon thread — this call returns immediately.
                 // We keep this thread alive to detect if the app is being killed.
                 while (isRunning) {
@@ -99,16 +114,16 @@ class GatewayService : Service() {
                     if (!isRunning) break
                 }
             } else if (result == "already_running") {
-                Log.i(TAG, "Proxy already running — reusing")
+                Logger.i(TAG, "Proxy already running — reusing")
                 while (isRunning) {
                     Thread.sleep(30_000)
                     if (!isRunning) break
                 }
             } else {
-                Log.e(TAG, "Proxy failed to start: $result")
+                Logger.e(TAG, "Proxy failed to start: $result")
             }
         } catch (e: Exception) {
-            Log.e(TAG, "Python proxy error", e)
+            Logger.e(TAG, "Python proxy error", e)
             _lastProxyError = e.message
         }
     }
@@ -120,7 +135,7 @@ class GatewayService : Service() {
                 if (!isRunning) return
                 val healthy = checkProxyHealth()
                 if (!healthy) {
-                    Log.w(TAG, "Proxy health check failed — restarting...")
+                    Logger.w(TAG, "Proxy health check failed — restarting...")
                     restartProxy()
                 }
                 healthCheckHandler?.postDelayed(this, 30_000) // every 30 seconds
@@ -130,7 +145,7 @@ class GatewayService : Service() {
     }
 
     private fun checkProxyHealth(): Boolean {
-        return try {
+        val healthy = try {
             val url = java.net.URL("http://127.0.0.1:9123/health")
             val conn = url.openConnection() as java.net.HttpURLConnection
             conn.connectTimeout = 2000
@@ -139,23 +154,34 @@ class GatewayService : Service() {
         } catch (_: Exception) {
             false
         }
+        if (!healthy) Logger.w(TAG, "Health check failed")
+        return healthy
     }
 
     private fun restartProxy() {
+        Logger.i(TAG, "Restarting proxy...")
         try {
-            val py = Python.getInstance()
-            val module = py.getModule("ruslan_proxy")
-            module.callAttr("stop_server")
+            if (Python.isStarted()) {
+                val py = Python.getInstance()
+                val module = py.getModule("ruslan_proxy")
+                module.callAttr("stop_server")
+                Logger.d(TAG, "Proxy stopped, restarting...")
+            }
             Thread.sleep(1000)
             val configDir = filesDir.resolve("hermes").absolutePath
-            module.callAttr("start_server", 9123, configDir)
-            Log.i(TAG, "Proxy restarted")
+            if (Python.isStarted()) {
+                val py = Python.getInstance()
+                val module = py.getModule("ruslan_proxy")
+                val result = module.callAttr("start_server", 9123, configDir).toString()
+                Logger.i(TAG, "Proxy restart result: $result")
+            }
         } catch (e: Exception) {
-            Log.e(TAG, "Proxy restart failed", e)
+            Logger.e(TAG, "Proxy restart failed", e)
         }
     }
 
     private fun stopGateway() {
+        Logger.i(TAG, "stopGateway() called")
         isRunning = false
         // Cancel wake-lock re-acquisition
         wakeLockReacquireTask?.let { wakeLockHandler?.removeCallbacks(it) }
@@ -167,10 +193,10 @@ class GatewayService : Service() {
                 val py = Python.getInstance()
                 val module = py.getModule("ruslan_proxy")
                 module.callAttr("stop_server")
-                Log.i(TAG, "Proxy stopped")
+                Logger.i(TAG, "Proxy stopped")
             }
         } catch (e: Exception) {
-            Log.e(TAG, "Error stopping proxy", e)
+            Logger.e(TAG, "Error stopping proxy", e)
         }
 
         if (wakeLock.isHeld) {
