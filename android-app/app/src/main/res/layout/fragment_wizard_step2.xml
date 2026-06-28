@@ -1,56 +1,31 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.constraintlayout.widget.ConstraintLayout
-    xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:padding="24dp">
 
-    <TextView
-        android:id="@+id/tvProviderTitle"
-        android:layout_width="0dp"
+    <LinearLayout
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="32dp"
-        android:text="@string/select_provider"
-        android:textSize="20sp"
-        android:textStyle="bold"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent" />
+        android:orientation="vertical">
 
-    <RadioGroup
-        android:id="@+id/rgProviders"
-        android:layout_width="0dp"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="24dp"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/tvProviderTitle">
-
-        <RadioButton
-            android:id="@+id/providerDeepseek"
+        <TextView
+            android:id="@+id/tvProviderTitle"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="8dp"
-            android:checked="true"
-            android:text="@string/deepseek"
-            android:textSize="16sp" />
+            android:layout_marginTop="32dp"
+            android:text="@string/select_provider"
+            android:textColor="@color/text_primary"
+            android:textSize="20sp"
+            android:textStyle="bold" />
 
-        <RadioButton
-            android:id="@+id/providerOpenai"
+        <RadioGroup
+            android:id="@+id/rgProviders"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="8dp"
-            android:text="@string/openai"
-            android:textSize="16sp" />
+            android:layout_marginTop="24dp">
 
-        <RadioButton
-            android:id="@+id/providerAnthropic"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="@string/anthropic"
-            android:textSize="16sp" />
+        </RadioGroup>
 
-    </RadioGroup>
-
-</androidx.constraintlayout.widget.ConstraintLayout>
+    </LinearLayout>
+</ScrollView>

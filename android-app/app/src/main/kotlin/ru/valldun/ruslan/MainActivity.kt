@@ -121,7 +121,11 @@ class MainActivity : AppCompatActivity() {
                 val health = fetchHealth()
                 if (health != null) {
                     binding.tvSessionsCount.text = health.optString("requests", "0")
-                    binding.tvMemoryPercent.text = getString(R.string.see_providers)
+                    val provider = health.optString("provider", "")
+                    val model = health.optString("model", "")
+                    if (provider.isNotEmpty()) {
+                        binding.tvMemoryPercent.text = if (model.isNotEmpty()) "$provider / $model" else provider
+                    }
                     binding.tvUptime.text = health.optString("uptime", "--")
                 }
             } catch (_: Exception) {
