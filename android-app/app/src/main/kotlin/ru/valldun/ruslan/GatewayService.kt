@@ -28,6 +28,7 @@ class GatewayService : Service() {
     private var wakeLockReacquireTask: Runnable? = null
     private var healthCheckHandler: Handler? = null
     private var healthCheckTask: Runnable? = null
+    private var healthFailCount = 0
 
     override fun onCreate() {
         super.onCreate()
@@ -129,32 +130,53 @@ class GatewayService : Service() {
     }
 
     private fun startHealthCheck() {
+        Logger.i(TAG, "Starting health checks (first check in 30s, interval 45s)")
         healthCheckHandler = healthCheckHandler ?: Handler(Looper.getMainLooper())
+        healthFailCount = 0
         healthCheckTask = object : Runnable {
             override fun run() {
                 if (!isRunning) return
                 val healthy = checkProxyHealth()
-                if (!healthy) {
-                    Logger.w(TAG, "Proxy health check failed — restarting...")
-                    restartProxy()
+                if (healthy) {
+                    healthFailCount = 0
+                    Logger.d(TAG, "Health check OK")
+                } else {
+                    healthFailCount++
+                    Logger.w(TAG, "Health check FAIL ($healthFailCount consecutive)")
+                    if (healthFailCount >= 3) {
+                        Logger.w(TAG, "3 failures — restarting proxy...")
+                        restartProxy()
+                        healthFailCount = 0
+                    }
                 }
-                healthCheckHandler?.postDelayed(this, 30_000) // every 30 seconds
+                healthCheckHandler?.postDelayed(this, 45_000)
             }
         }
-        healthCheckHandler?.postDelayed(healthCheckTask!!, 10_000)
+        healthCheckHandler?.postDelayed(healthCheckTask!!, 30_000)
     }
 
     private fun checkProxyHealth(): Boolean {
         val healthy = try {
             val url = java.net.URL("http://127.0.0.1:9123/health")
             val conn = url.openConnection() as java.net.HttpURLConnection
-            conn.connectTimeout = 2000
-            conn.readTimeout = 2000
-            conn.responseCode == 200
-        } catch (_: Exception) {
+            conn.connectTimeout = 3000
+            conn.readTimeout = 3000
+            val code = conn.responseCode
+            if (code == 200) {
+                val body = conn.inputStream.bufferedReader().readText()
+                Logger.d(TAG, "Health response: $body")
+                true
+            } else {
+                Logger.w(TAG, "Health check returned HTTP $code")
+                false
+            }
+        } catch (e: java.net.ConnectException) {
+            Logger.d(TAG, "Health check: connection refused (proxy may be starting)")
+            false
+        } catch (e: Exception) {
+            Logger.d(TAG, "Health check exception: ${e.message}")
             false
         }
-        if (!healthy) Logger.w(TAG, "Health check failed")
         return healthy
     }
 
