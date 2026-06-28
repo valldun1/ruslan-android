@@ -21,6 +21,8 @@ class GatewayService : Service() {
     private var logThread: Thread? = null
     private lateinit var wakeLock: PowerManager.WakeLock
     private var isRunning = false
+    private var wakeLockHandler: android.os.Handler? = null
+    private var wakeLockReacquireTask: Runnable? = null
 
     override fun onCreate() {
         super.onCreate()
@@ -55,15 +57,31 @@ class GatewayService : Service() {
     private fun startGateway() {
         isRunning = true
 
-        if (!wakeLock.isHeld) {
-            wakeLock.acquire(10 * 60 * 1000L)
-        }
+        // Acquire wake-lock with periodic re-acquisition (every 9 min within 10 min timeout)
+        acquireWakeLock()
 
         startForeground(NOTIFICATION_ID, createNotification())
 
         Thread {
             runProxyLoop()
         }.start()
+    }
+
+    private fun acquireWakeLock() {
+        if (!wakeLock.isHeld) {
+            wakeLock.acquire(10 * 60 * 1000L) // 10 minute max
+        }
+        // Schedule re-acquisition at 9 minutes to prevent timeout
+        wakeLockHandler = wakeLockHandler ?: android.os.Handler(mainLooper)
+        wakeLockReacquireTask?.let { wakeLockHandler?.removeCallbacks(it) }
+        wakeLockReacquireTask = Runnable {
+            if (isRunning) {
+                if (wakeLock.isHeld) wakeLock.release()
+                wakeLock.acquire(10 * 60 * 1000L)
+                acquireWakeLock() // re-schedule
+            }
+        }
+        wakeLockHandler?.postDelayed(wakeLockReacquireTask!!, 9 * 60 * 1000L)
     }
 
     private fun runProxyLoop() {
@@ -139,6 +157,8 @@ class GatewayService : Service() {
 
     private fun stopGateway() {
         isRunning = false
+        // Cancel wake-lock re-acquisition
+        wakeLockReacquireTask?.let { wakeLockHandler?.removeCallbacks(it) }
         try {
             proxyProcess?.destroy()
             proxyProcess?.waitFor()

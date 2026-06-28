@@ -14,6 +14,7 @@
     <string name="sessions">Сессий</string>
     <string name="memory">Память</string>
     <string name="uptime">Время работы</string>
+    <string name="see_providers">→ Провайдеры</string>
     
     <!-- Bottom Navigation -->
     <string name="nav_home">Главная</string>

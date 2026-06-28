@@ -9,7 +9,12 @@ import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import ru.valldun.ruslan.databinding.ActivityMainBinding
+import java.net.URL
 
 class MainActivity : AppCompatActivity() {
 
@@ -108,10 +113,34 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun updateStats() {
-        // These would come from actual service metrics
-        binding.tvSessionsCount.text = "12"
-        binding.tvMemoryPercent.text = "85%"
-        binding.tvUptime.text = "3д 7ч"
+        // Read real metrics from the proxy health endpoint
+        lifecycleScope.launch {
+            try {
+                val health = fetchHealth()
+                if (health != null) {
+                    binding.tvSessionsCount.text = health.optString("requests", "0")
+                    binding.tvMemoryPercent.text = getString(R.string.see_providers)
+                    binding.tvUptime.text = health.optString("uptime", "--")
+                }
+            } catch (_: Exception) {
+                // keep defaults
+            }
+        }
+    }
+
+    private suspend fun fetchHealth(): org.json.JSONObject? = withContext(Dispatchers.IO) {
+        try {
+            val url = URL("http://127.0.0.1:9123/health")
+            val conn = url.openConnection() as java.net.HttpURLConnection
+            conn.connectTimeout = 3000
+            conn.readTimeout = 3000
+            if (conn.responseCode == 200) {
+                val text = conn.inputStream.bufferedReader().readText()
+                org.json.JSONObject(text)
+            } else null
+        } catch (_: Exception) {
+            null
+        }
     }
 
     private fun isFirstRun(): Boolean {

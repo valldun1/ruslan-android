@@ -1,0 +1,31 @@
+# Ruslan Agent — Configuration Template
+# Generated on first launch. Edit via Settings > Providers in the app.
+
+provider: opencode-go
+
+model:
+  default: deepseek-v4-flash
+  provider: opencode-go
+  base_url: https://opencode.ai/zen/go/v1
+
+gateway:
+  host: "127.0.0.1"
+  port: 9123
+
+terminal:
+  backend: local
+  timeout: 120
+
+display:
+  compact: true
+  streaming: true
+
+memory:
+  memory_enabled: false
+
+telegram:
+  enabled: false
+  require_mention: false
+
+stt:
+  provider: none

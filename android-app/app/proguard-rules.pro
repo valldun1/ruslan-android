@@ -27,7 +27,25 @@
 # Keep Termux-related classes
 -keep class ru.valldun.ruslan.** { *; }
 
-# Remove logging in release
+# Keep JSON and HTTP — used at runtime by ChatActivity/Health checks
+-keep class org.json.** { *; }
+-keepclassmembers class org.json.** { *; }
+-dontwarn org.json.**
+
+# Keep Java HTTP/Networking
+-keep class java.net.** { *; }
+-dontwarn java.net.**
+
+# Keep Kotlin serialization (if added later)
+-keepattributes *Annotation*, InnerClasses
+-dontnote kotlinx.serialization.AnnotationsKt
+
+-keepclassmembers class kotlinx.serialization.json.** { *** Companion; }
+-keepclasseswithmembers class kotlinx.serialization.json.** {
+    kotlinx.serialization.KSerializer serializer(...);
+}
+
+# Remove logging in release (keep errors for crash reporting)
 -assumenosideeffects class android.util.Log {
     public static *** d(...);
     public static *** v(...);

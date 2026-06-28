@@ -1,14 +1,35 @@
-ruslan-agent==0.17.0
-maturin==1.5.0
-jiter==0.4.0
-pydantic==2.13.4
-openai==2.24.0
-discord.py==2.3.2
-PyYAML==6.0.1
+# Ruslan Agent — pip dependencies for aarch64 Android
+# Pinned versions known to compile on Android/Linux ARM64
+# Build order: pure Python first, then native extensions
+
+# Core (pure Python)
 httpx==0.27.0
-uvicorn==0.29.0
+PyYAML==6.0.1
 python-dotenv==1.0.1
-requests==2.31.0
-aiohttp==3.9.3
-aiosignal==1.3.1
-asyncio-mqtt==0.16.1
+certifi>=2024.0.0
+anyio>=4.0.0
+httpcore>=1.0.0
+
+# Agent / Hermes core (install from GitHub if PyPI not available)
+# ruslan-agent==0.17.0  — uncomment when published to PyPI
+# hermes-cli — uncomment when published
+
+# LLM providers
+openai==2.24.0
+# google-generativeai>=0.8.0  — optional: native Gemini SDK
+
+# Web server (for proxy/gateway)
+uvicorn==0.29.0
+starlette>=0.37.0
+
+# Native extensions (compile from source on device or pre-build CI wheels)
+pydantic==2.13.4
+cryptography>=42.0.0
+jiter==0.4.0
+
+# Build tools (for compiling native extensions)
+maturin==1.5.0
+
+# Optional: Discord, Telegram libraries
+# discord.py==2.3.2
+# python-telegram-bot>=20.0

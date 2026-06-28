@@ -1,6 +1,7 @@
 package ru.valldun.ruslan
 
 import android.os.Bundle
+import android.util.Log
 import android.view.inputmethod.EditorInfo
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
@@ -10,7 +11,9 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import ru.valldun.ruslan.databinding.ActivityChatBinding
 import java.io.OutputStreamWriter
+import java.net.ConnectException
 import java.net.HttpURLConnection
+import java.net.SocketTimeoutException
 import java.net.URL
 
 class ChatActivity : AppCompatActivity() {
@@ -21,6 +24,10 @@ class ChatActivity : AppCompatActivity() {
     // Gateway connection config — reads from .env or defaults
     private var gatewayUrl = "http://127.0.0.1:9123"
     private var gatewayToken = ""
+
+    companion object {
+        private const val TAG = "ChatActivity"
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -158,12 +165,16 @@ class ChatActivity : AppCompatActivity() {
             conn.setRequestProperty("Authorization", "Bearer $gatewayToken")
             conn.doOutput = true
             conn.connectTimeout = 15000
-            conn.readTimeout = 30000
+            conn.readTimeout = 60000  // longer for LLM responses
 
-            val body = """{
-                "model": "default",
-                "messages": [{"role": "user", "content": "${message.replace("\"", "\\\"")}"}]
-            }"""
+            // Escape message for JSON (basic escaping)
+            val escaped = message
+                .replace("\\", "\\\\")
+                .replace("\"", "\\\"")
+                .replace("\n", "\\n")
+                .replace("\r", "\\r")
+                .replace("\t", "\\t")
+            val body = """{"model":"default","messages":[{"role":"user","content":"$escaped"}],"stream":true}"""
 
             OutputStreamWriter(conn.outputStream).use { writer ->
                 writer.write(body)
@@ -173,18 +184,28 @@ class ChatActivity : AppCompatActivity() {
             val responseCode = conn.responseCode
             if (responseCode == 200) {
                 val responseText = conn.inputStream.bufferedReader().readText()
-                // Parse JSON response
-                val json = org.json.JSONObject(responseText)
-                json.getJSONArray("choices")
-                    .getJSONObject(0)
-                    .getJSONObject("message")
-                    .getString("content")
+                // Try parsing as standard JSON first
+                try {
+                    val json = org.json.JSONObject(responseText)
+                    json.getJSONArray("choices")
+                        .getJSONObject(0)
+                        .getJSONObject("message")
+                        .getString("content")
+                } catch (_: org.json.JSONException) {
+                    // Maybe SSE stream — return raw text (handled by caller)
+                    responseText
+                }
             } else {
                 val errorText = conn.errorStream?.bufferedReader()?.readText() ?: "HTTP $responseCode"
                 "⚠ Gateway error ($responseCode): $errorText"
             }
+        } catch (e: java.net.ConnectException) {
+            null // Connection refused — gateway not running
+        } catch (e: java.net.SocketTimeoutException) {
+            "⚠ Таймаут: gateway не отвечает"
         } catch (e: Exception) {
-            null // Connection failed
+            Log.e(TAG, "sendToGateway failed", e)
+            null
         }
     }
 }
