@@ -3,7 +3,6 @@ package ru.valldun.ruslan
 import android.content.Intent
 import android.graphics.Color
 import android.net.Uri
-import android.os.Build
 import android.os.Bundle
 import android.os.PowerManager
 import android.provider.Settings
@@ -40,9 +39,6 @@ class MainActivity : AppCompatActivity() {
 
         // Request battery optimization exemption (HyperOS fix)
         requestBatteryOptimizationExemption()
-
-        // Ensure Termux prefix is extracted
-        TermuxBootstrap.ensurePrefix(this)
 
         setupUI()
         updateStatus()
