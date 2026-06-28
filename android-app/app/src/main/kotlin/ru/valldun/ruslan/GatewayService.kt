@@ -290,20 +290,17 @@ class GatewayService : Service() {
         var lastProxyError: String? = null
             private set
             get() {
-                val v = _lastProxyError
-                if (v != null) return v
+                val v = field
                 // Also read from Python if possible
-                if (Python.isStarted()) {
+                if (v == null && Python.isStarted()) {
                     try {
                         val py = Python.getInstance()
                         val mod = py.getModule("ruslan_proxy")
-                        val status = mod.callAttr("get_status").asMap()
-                        if (status["status"] == "error") {
-                            return status["error"]?.toString()
-                        }
+                        // get_status() returns a dict
+                        field = null // not stored here for now
                     } catch (_: Exception) {}
                 }
-                return null
+                return v
             }
 
         // Internal
