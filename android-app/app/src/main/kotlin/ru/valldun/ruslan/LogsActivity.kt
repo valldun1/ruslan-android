@@ -11,6 +11,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.FileProvider
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import com.google.android.material.button.MaterialButton
 
 class LogsActivity : AppCompatActivity() {
 
@@ -35,11 +36,11 @@ class LogsActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_logs)
 
-        rvLogs = findViewById(R.id.rvLogs)
-        btnClear = findViewById(R.id.btnClear)
-        btnShare = findViewById(R.id.btnShare)
-        btnBack = findViewById(R.id.btnBack)
-        tvCount = findViewById(R.id.tvLogCount)
+        rvLogs = findViewById<RecyclerView>(R.id.rvLogs)
+        btnClear = findViewById<MaterialButton>(R.id.btnClear)
+        btnShare = findViewById<MaterialButton>(R.id.btnShare)
+        btnBack = findViewById<View>(R.id.btnBack)
+        tvCount = findViewById<TextView>(R.id.tvLogCount)
 
         adapter = LogAdapter()
         val layoutManager = LinearLayoutManager(this).apply { stackFromEnd = true }
@@ -64,6 +65,17 @@ class LogsActivity : AppCompatActivity() {
             updateLogs()
         }
         btnShare.setOnClickListener { shareLogs() }
+
+        // Filter buttons
+        findViewById<MaterialButton>(R.id.btnFilterAll).setOnClickListener {
+            filter = "ALL"; updateLogs()
+        }
+        findViewById<MaterialButton>(R.id.btnFilterError).setOnClickListener {
+            filter = "ERROR"; updateLogs()
+        }
+        findViewById<MaterialButton>(R.id.btnFilterWarn).setOnClickListener {
+            filter = "WARN"; updateLogs()
+        }
     }
 
     override fun onResume() {
@@ -81,7 +93,6 @@ class LogsActivity : AppCompatActivity() {
         val logs = Logger.getRingBufferFiltered(filter)
         adapter.updateLogs(logs)
         tvCount.text = "[${logs.size}]"
-        // Only scroll to bottom if user hasn't manually scrolled up
         if (!isUserScrolledUp && logs.isNotEmpty()) {
             rvLogs.scrollToPosition(logs.size - 1)
         }
