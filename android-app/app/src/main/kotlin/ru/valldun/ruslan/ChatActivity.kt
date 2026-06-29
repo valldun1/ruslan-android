@@ -34,6 +34,7 @@ class ChatActivity : AppCompatActivity() {
     private var gatewayUrl = "http://127.0.0.1:9123"
     private var gatewayToken = ""
     private var gatewayModel = ""
+    private var gatewayProvider = ""
     private var speechRecognizer: SpeechRecognizer? = null
 
     private val recordAudioLauncher = registerForActivityResult(
@@ -60,9 +61,7 @@ class ChatActivity : AppCompatActivity() {
     }
 
     private fun loadGatewayConfig() {
-        // Gateway is ALWAYS at 127.0.0.1:9123 (local proxy, not the upstream provider URL)
-        // gatewayUrl stays at default "http://127.0.0.1:9123"
-
+        // Gateway is ALWAYS at 127.0.0.1:9123 (local proxy)
         try {
             val configFile = java.io.File("${filesDir.absolutePath}/hermes/ruslan-provider.json")
             if (configFile.exists()) {
@@ -74,13 +73,13 @@ class ChatActivity : AppCompatActivity() {
                 if (json.has("model") && !json.isNull("model")) {
                     gatewayModel = json.getString("model")
                 }
-                val provider = json.optString("provider", "?")
-                Log.d(TAG, "config loaded: provider=$provider model=$gatewayModel hasKey=${gatewayToken.isNotEmpty()}")
+                gatewayProvider = json.optString("provider", "?")
+                Logger.i(TAG, "config loaded: provider=$gatewayProvider model=$gatewayModel hasKey=${gatewayToken.isNotEmpty()}")
             } else {
-                Log.d(TAG, "no config file found at ${configFile.absolutePath}")
+                Logger.w(TAG, "no config file at ${configFile.absolutePath}")
             }
         } catch (e: Exception) {
-            Log.e(TAG, "loadGatewayConfig error", e)
+            Logger.e(TAG, "loadGatewayConfig error: ${e.message}")
         }
     }
 
@@ -294,7 +293,7 @@ class ChatActivity : AppCompatActivity() {
         val text = binding.etMessage.text.toString().trim()
         if (text.isEmpty()) return
 
-        Log.d(TAG, "sendMessage: text.length=${text.length} gatewayToken.isEmpty=${gatewayToken.isEmpty()} model=$gatewayModel")
+        Logger.i(TAG, "sendMessage: len=${text.length} model=$gatewayModel provider=$gatewayProvider")
 
         // Add user message to chat
         val userMessage = ChatMessage(
@@ -354,7 +353,7 @@ class ChatActivity : AppCompatActivity() {
             val url = URL("${gatewayUrl}/chat/completions")
             val conn = url.openConnection() as HttpURLConnection
             conn.requestMethod = "POST"
-            conn.setRequestProperty("Content-Type", "application/json")
+            conn.setRequestProperty("Content-Type", "application/json; charset=utf-8")
             if (gatewayToken.isNotEmpty()) {
                 conn.setRequestProperty("Authorization", "Bearer $gatewayToken")
             }
@@ -362,25 +361,29 @@ class ChatActivity : AppCompatActivity() {
             conn.connectTimeout = 15000
             conn.readTimeout = 60000  // longer for LLM responses
 
-            // Escape message for JSON (basic escaping)
+            // Build JSON body manually (no libs needed)
+            val modelName = if (gatewayModel.isNotEmpty()) gatewayModel else "deepseek-chat"
             val escaped = message
-                .replace("\\\\", "\\\\\\\\")
-                .replace("\\\"", "\\\\\\\"")
-                .replace("\\n", "\\\\n")
-                .replace("\\r", "\\\\r")
-                .replace("\\t", "\\\\t")
-            val modelName = if (gatewayModel.isNotEmpty()) gatewayModel else "default"
+                .replace("\\", "\\\\")
+                .replace("\"", "\\\"")
+                .replace("\n", "\\n")
+                .replace("\r", "\\r")
+                .replace("\t", "\\t")
             val body = """{"model":"$modelName","messages":[{"role":"user","content":"$escaped"}],"stream":true}"""
 
-            Log.d(TAG, "sending to $url model=$modelName")
-            OutputStreamWriter(conn.outputStream).use { writer ->
+            Logger.i(TAG, "POST $url model=$modelName body_len=${body.length}")
+
+            OutputStreamWriter(conn.outputStream, Charsets.UTF_8).use { writer ->
                 writer.write(body)
                 writer.flush()
             }
 
             val responseCode = conn.responseCode
+            Logger.i(TAG, "response code=$responseCode")
+
             if (responseCode == 200) {
-                val responseText = conn.inputStream.bufferedReader().readText()
+                val responseText = conn.inputStream.bufferedReader(Charsets.UTF_8).readText()
+                Logger.i(TAG, "response body len=${responseText.length}")
                 // Try parsing as standard JSON first (non-streaming response)
                 val result = try {
                     val json = org.json.JSONObject(responseText)
@@ -414,16 +417,19 @@ class ChatActivity : AppCompatActivity() {
                 }
                 if (result != null) result else responseText
             } else {
-                val errorText = conn.errorStream?.bufferedReader()?.readText() ?: "HTTP $responseCode"
+                val errorText = conn.errorStream?.bufferedReader(Charsets.UTF_8)?.readText() ?: "HTTP $responseCode"
                 val cleanError = stripHtml(errorText).take(300)
+                Logger.w(TAG, "error $responseCode: $cleanError")
                 "⚠ Gateway error ($responseCode): $cleanError"
             }
         } catch (e: java.net.ConnectException) {
+            Logger.e(TAG, "Connection refused")
             null // Connection refused — gateway not running
         } catch (e: java.net.SocketTimeoutException) {
+            Logger.e(TAG, "Socket timeout")
             "⚠ Таймаут: gateway не отвечает"
         } catch (e: Exception) {
-            Log.e(TAG, "sendToGateway failed", e)
+            Logger.e(TAG, "sendToGateway failed: ${e.message}")
             null
         }
     }
