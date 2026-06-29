@@ -11,26 +11,23 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.FileProvider
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
-import com.google.android.material.button.MaterialButton
 
 class LogsActivity : AppCompatActivity() {
 
     private lateinit var rvLogs: RecyclerView
     private lateinit var btnClear: MaterialButton
     private lateinit var btnShare: MaterialButton
-    private lateinit var btnFilterAll: MaterialButton
-    private lateinit var btnFilterError: MaterialButton
-    private lateinit var btnFilterWarn: MaterialButton
-    private lateinit var btnBack: View
     private lateinit var tvCount: TextView
+    private lateinit var btnBack: View
     private lateinit var adapter: LogAdapter
     private val handler = Handler(Looper.getMainLooper())
     private var filter: String? = "ALL"
+    private var isUserScrolledUp = false
 
     private val updateRunnable = object : Runnable {
         override fun run() {
             updateLogs()
-            handler.postDelayed(this, 1000)
+            handler.postDelayed(this, 5000) // refresh every 5s (was 1s)
         }
     }
 
@@ -41,15 +38,25 @@ class LogsActivity : AppCompatActivity() {
         rvLogs = findViewById(R.id.rvLogs)
         btnClear = findViewById(R.id.btnClear)
         btnShare = findViewById(R.id.btnShare)
-        btnFilterAll = findViewById(R.id.btnFilterAll)
-        btnFilterError = findViewById(R.id.btnFilterError)
-        btnFilterWarn = findViewById(R.id.btnFilterWarn)
         btnBack = findViewById(R.id.btnBack)
         tvCount = findViewById(R.id.tvLogCount)
 
         adapter = LogAdapter()
-        rvLogs.layoutManager = LinearLayoutManager(this).apply { stackFromEnd = true }
+        val layoutManager = LinearLayoutManager(this).apply { stackFromEnd = true }
+        rvLogs.layoutManager = layoutManager
         rvLogs.adapter = adapter
+
+        // Detect manual scroll — don't force to bottom
+        rvLogs.addOnScrollListener(object : RecyclerView.OnScrollListener() {
+            override fun onScrollStateChanged(rv: RecyclerView, newState: Int) {
+                if (newState == RecyclerView.SCROLL_STATE_DRAGGING) {
+                    val lm = rv.layoutManager as LinearLayoutManager
+                    val lastVisible = lm.findLastVisibleItemPosition()
+                    val total = adapter.itemCount - 1
+                    isUserScrolledUp = lastVisible < total - 2
+                }
+            }
+        })
 
         btnBack.setOnClickListener { finish() }
         btnClear.setOnClickListener {
@@ -57,13 +64,11 @@ class LogsActivity : AppCompatActivity() {
             updateLogs()
         }
         btnShare.setOnClickListener { shareLogs() }
-        btnFilterAll.setOnClickListener { filter = "ALL"; updateLogs() }
-        btnFilterError.setOnClickListener { filter = "ERROR"; updateLogs() }
-        btnFilterWarn.setOnClickListener { filter = "WARN"; updateLogs() }
     }
 
     override fun onResume() {
         super.onResume()
+        isUserScrolledUp = false
         handler.post(updateRunnable)
     }
 
@@ -76,7 +81,8 @@ class LogsActivity : AppCompatActivity() {
         val logs = Logger.getRingBufferFiltered(filter)
         adapter.updateLogs(logs)
         tvCount.text = "[${logs.size}]"
-        if (logs.isNotEmpty()) {
+        // Only scroll to bottom if user hasn't manually scrolled up
+        if (!isUserScrolledUp && logs.isNotEmpty()) {
             rvLogs.scrollToPosition(logs.size - 1)
         }
     }
