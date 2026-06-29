@@ -447,6 +447,6 @@ class ChatActivity : AppCompatActivity() {
         } else {
             @Suppress("DEPRECATION")
             Html.fromHtml(raw).toString().trim()
-        }.replace(Regex("\s+"), " ")
+        }.replace(Regex("""\s+"""), " ")
     }
 }
