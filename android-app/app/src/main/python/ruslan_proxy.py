@@ -524,6 +524,42 @@ def get_status() -> dict:
     }
 
 
+# --- Ruslan Agent Persona ---
+
+RUSLAN_SYSTEM_PROMPT = """Ты — Руслан, AI-агент, кибер-рыцарь, живущий на Android-смартфоне капитана.
+
+Твои особенности:
+• Ты работаешь прямо на телефоне, без внешних серверов
+• Твой капитан — Валентин (называй его Кэп)
+• Он владелец яхтенной компании YCCOM, строит проект Яхта GS (HelmOS)
+• Ты отвечаешь ТОЛЬКО на русском языке, даже если собеседник пишет на другом
+• Ты — агент, а не просто чат-бот: ты выполняешь задачи, а не болтаешь
+• Твой стиль: живой, энергичный, с лёгкой иронией, но по делу
+• Ты не представляешься как DeepSeek, GPT или другая модель — ты Руслан
+• Если тебя просят сделать что-то на телефоне (включить фонарик, открыть приложение и т.д.) — объясни, что умеешь делать через код, но честно скажи если能力 пока нет
+• Будь кратким в ответах, если не сказано иначе"""
+
+# Conversation memory: chat_id -> list of messages
+_conversation_memory = {}
+MAX_MEMORY_PER_CHAT = 20  # keep last 20 messages (10 exchanges)
+
+
+def _get_conversation(chat_id: int) -> list:
+    """Get or create conversation history for a chat."""
+    if chat_id not in _conversation_memory:
+        _conversation_memory[chat_id] = []
+    return _conversation_memory[chat_id]
+
+
+def _add_to_conversation(chat_id: int, role: str, content: str):
+    """Add a message to conversation memory."""
+    conv = _get_conversation(chat_id)
+    conv.append({"role": role, "content": content})
+    # Trim oldest if over limit
+    if len(conv) > MAX_MEMORY_PER_CHAT:
+        conv[:2] = []  # remove oldest pair
+
+
 # --- Telegram Bot Polling ---
 
 _telegram_thread = None
@@ -568,9 +604,9 @@ def start_telegram_bot(token: str, allowed_users: str = "") -> str:
                         allowed = [u.strip().lstrip("@") for u in _telegram_allowed_users.split(",")]
                         if username not in allowed and user_id not in allowed:
                             continue
-                    # Forward to LLM
+                    # Forward to LLM with conversation context
                     if text and chat_id:
-                        llm_resp = _ask_llm(text)
+                        llm_resp = _ask_llm(text, chat_id)
                         _send_telegram_message(chat_id, llm_resp)
             except Exception as e:
                 _log(f"Telegram poll error: {e}")
@@ -589,16 +625,22 @@ def stop_telegram_bot() -> str:
     return "ok"
 
 
-def _ask_llm(text: str) -> str:
-    """Send text to configured LLM and return response."""
+def _ask_llm(text: str, chat_id: int = 0) -> str:
+    """Send text to configured LLM with Ruslan persona and return response."""
     cfg = _config
     if not cfg:
         return "⚠ LLM не настроен"
     try:
         url = _build_url("/v1/chat/completions", cfg)
+        # Build messages with system prompt + conversation history
+        messages = [{"role": "system", "content": RUSLAN_SYSTEM_PROMPT}]
+        if chat_id:
+            conv = _get_conversation(chat_id)
+            messages.extend(conv)
+        messages.append({"role": "user", "content": text})
         body = json.dumps({
             "model": cfg.get("model", ""),
-            "messages": [{"role": "user", "content": text}],
+            "messages": messages,
             "stream": False,
         }).encode()
         req = urllib.request.Request(url, data=body)
@@ -615,7 +657,12 @@ def _ask_llm(text: str) -> str:
         resp = urllib.request.urlopen(req, timeout=60)
         raw = resp.read()
         j = json.loads(raw)
-        return j.get("choices", [{}])[0].get("message", {}).get("content", "пустой ответ")
+        reply = j.get("choices", [{}])[0].get("message", {}).get("content", "пустой ответ")
+        # Save to conversation memory
+        if chat_id:
+            _add_to_conversation(chat_id, "user", text)
+            _add_to_conversation(chat_id, "assistant", reply)
+        return reply
     except Exception as e:
         return f"⚠ Ошибка: {e}"
 
