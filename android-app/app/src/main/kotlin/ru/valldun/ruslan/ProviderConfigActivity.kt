@@ -12,7 +12,9 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.Button
 import android.widget.EditText
+import android.widget.Spinner
 import android.widget.TextView
+import android.widget.ArrayAdapter
 import ru.valldun.ruslan.databinding.ActivityProvidersBinding
 
 class ProviderConfigActivity : AppCompatActivity() {
@@ -87,13 +89,27 @@ class ProviderConfigActivity : AppCompatActivity() {
         val etName = dialogView.findViewById<EditText>(R.id.etName)
         val etBaseUrl = dialogView.findViewById<EditText>(R.id.etBaseUrl)
         val etApiKey = dialogView.findViewById<EditText>(R.id.etApiKey)
-        val etModel = dialogView.findViewById<EditText>(R.id.etModel)
+        val spinnerModel = dialogView.findViewById<Spinner>(R.id.spinnerModel)
+
+        // Determine provider ID for model list
+        val providerId = existing?.id ?: "deepseek"
+
+        // Populate model spinner
+        val models = ProviderConfig.getModelsForProvider(providerId)
+        val modelAdapter = ArrayAdapter(this, android.R.layout.simple_spinner_item, models).apply {
+            setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
+        }
+        spinnerModel.adapter = modelAdapter
+
+        // Select current model
+        val currentModel = existing?.defaultModel ?: ""
+        val modelIndex = models.indexOf(currentModel).coerceAtLeast(0)
+        spinnerModel.setSelection(modelIndex)
 
         if (existing != null) {
             etName.setText(existing.name)
             etBaseUrl.setText(existing.baseUrl)
             etApiKey.setText(existing.apiKey)
-            etModel.setText(existing.defaultModel)
         }
 
         AlertDialog.Builder(this)
@@ -111,7 +127,7 @@ class ProviderConfigActivity : AppCompatActivity() {
                     name = name,
                     apiKey = etApiKey.text.toString().trim(),
                     baseUrl = etBaseUrl.text.toString().trim(),
-                    defaultModel = etModel.text.toString().trim(),
+                    defaultModel = spinnerModel.selectedItem?.toString() ?: "",
                     isActive = existing?.isActive ?: false
                 )
                 providerManager.addOrUpdateProvider(provider)

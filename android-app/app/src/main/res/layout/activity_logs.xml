@@ -59,6 +59,7 @@
             android:layout_height="32dp"
             android:text="ALL"
             android:textSize="11sp"
+            android:textColor="@color/btn_primary_text"
             style="@style/Widget.Ruslan.Button.Secondary"
             android:paddingHorizontal="12dp" />
 
@@ -68,6 +69,7 @@
             android:layout_height="32dp"
             android:text="WARN"
             android:textSize="11sp"
+            android:textColor="@color/btn_primary_text"
             style="@style/Widget.Ruslan.Button.Secondary"
             android:paddingHorizontal="12dp"
             android:layout_marginStart="8dp" />
@@ -78,6 +80,7 @@
             android:layout_height="32dp"
             android:text="ERR"
             android:textSize="11sp"
+            android:textColor="@color/btn_primary_text"
             style="@style/Widget.Ruslan.Button.Secondary"
             android:paddingHorizontal="12dp"
             android:layout_marginStart="8dp" />
