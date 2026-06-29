@@ -14,6 +14,21 @@ object Logger {
 
     fun init(appContext: Context) {
         context = appContext.applicationContext
+        // Write header with version info on first init
+        try {
+            val ctx = context ?: return
+            val logFile = File(ctx.filesDir, LOG_FILE_NAME)
+            if (!logFile.exists() || logFile.length() == 0L) {
+                val versionName = try {
+                    ctx.packageManager.getPackageInfo(ctx.packageName, 0).versionName ?: "?"
+                } catch (e: Exception) { "?" }
+                val device = android.os.Build.MODEL
+                val androidVer = android.os.Build.VERSION.RELEASE
+                FileWriter(logFile, true).use { writer ->
+                    writer.append("# Руслан Agent v${versionName} | ${device} | Android ${androidVer}\n")
+                }
+            }
+        } catch (_: Exception) {}
     }
 
     fun d(tag: String, message: String) {

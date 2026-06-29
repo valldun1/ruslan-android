@@ -4,6 +4,7 @@ import android.os.Bundle
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import android.view.LayoutInflater
@@ -114,11 +115,23 @@ class ProviderConfigActivity : AppCompatActivity() {
                     isActive = existing?.isActive ?: false
                 )
                 providerManager.addOrUpdateProvider(provider)
+                // Auto-activate if no active provider exists
+                if (providerManager.getActiveProvider() == null || existing == null) {
+                    providerManager.setActiveProvider(provider.id)
+                }
                 refreshList()
                 generateEnv()
             }
             .setNegativeButton("Отмена", null)
             .show()
+            .also { dialog ->
+                dialog.getButton(AlertDialog.BUTTON_POSITIVE).setTextColor(
+                    ContextCompat.getColor(this, R.color.btn_secondary_text)
+                )
+                dialog.getButton(AlertDialog.BUTTON_NEGATIVE).setTextColor(
+                    ContextCompat.getColor(this, R.color.btn_secondary_text)
+                )
+            }
     }
 
     private fun generateEnv() {
@@ -138,6 +151,14 @@ class ProviderConfigActivity : AppCompatActivity() {
                 put("baseUrl", active.baseUrl)
             }
             configFile.writeText(json.toString(2))
+            // Tell Python proxy to reload config
+            try {
+                if (com.chaquo.python.Python.isStarted()) {
+                    val py = com.chaquo.python.Python.getInstance()
+                    val result = py.getModule("ruslan_proxy").callAttr("reload_config").toString()
+                    Logger.i("ProviderCfg", "Proxy reload: $result")
+                }
+            } catch (_: Exception) {}
             Toast.makeText(this, "✓ Провайдер ${active.name} сохранён", Toast.LENGTH_SHORT).show()
         } catch (e: Exception) {
             Toast.makeText(this, "Ошибка: ${e.message}", Toast.LENGTH_LONG).show()
