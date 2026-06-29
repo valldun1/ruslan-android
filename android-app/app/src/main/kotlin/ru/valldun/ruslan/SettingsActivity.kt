@@ -65,7 +65,7 @@ class SettingsActivity : AppCompatActivity() {
 
             // About — show version from package manager
             val versionName = try {
-                ctx.packageManager.getPackageInfo(ctx.packageName, 0).versionName ?: "?"
+                requireContext().packageManager.getPackageInfo(requireContext().packageName, 0).versionName ?: "?"
             } catch (e: Exception) { "?" }
             findPreference<Preference>("about")?.summary = "Руслан Agent v${versionName}"
         }
