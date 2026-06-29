@@ -14,7 +14,6 @@ data class ProviderConfig(
     companion object {
         val BUILT_IN = listOf(
             ProviderConfig("deepseek", "DeepSeek", baseUrl = "https://api.deepseek.com/v1", defaultModel = "deepseek-chat"),
-            ProviderConfig("deepseek-flash", "DeepSeek Flash", baseUrl = "https://api.deepseek.com/v1", defaultModel = "deepseek-v4-flash"),
             ProviderConfig("opencode-go", "OpenCode Go", baseUrl = "https://opencode.ai/zen/go/v1", defaultModel = "deepseek-v4-flash"),
             ProviderConfig("openai", "OpenAI", baseUrl = "https://api.openai.com/v1", defaultModel = "gpt-4o"),
             ProviderConfig("anthropic", "Anthropic", baseUrl = "https://api.anthropic.com/v1", defaultModel = "claude-sonnet-4-20250514"),

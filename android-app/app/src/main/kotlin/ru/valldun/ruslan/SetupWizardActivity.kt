@@ -77,7 +77,6 @@ class SetupWizardActivity : AppCompatActivity() {
             id = selectedProvider,
             name = when (selectedProvider) {
                 "deepseek" -> "DeepSeek"
-                "deepseek-flash" -> "DeepSeek Flash"
                 "opencode-go" -> "OpenCode Go"
                 "openai" -> "OpenAI"
                 "anthropic" -> "Anthropic"
