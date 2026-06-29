@@ -8,7 +8,6 @@ import androidx.core.content.FileProvider
 import androidx.preference.Preference
 import androidx.preference.PreferenceFragmentCompat
 import androidx.preference.SwitchPreferenceCompat
-import ru.valldun.ruslan.BuildConfig
 import java.io.File
 
 class SettingsActivity : AppCompatActivity() {
@@ -64,8 +63,11 @@ class SettingsActivity : AppCompatActivity() {
                 true
             }
 
-            // About — show version from BuildConfig
-            findPreference<Preference>("about")?.summary = "Руслан Agent v${BuildConfig.VERSION_NAME}"
+            // About — show version from package manager
+            val versionName = try {
+                ctx.packageManager.getPackageInfo(ctx.packageName, 0).versionName ?: "?"
+            } catch (e: Exception) { "?" }
+            findPreference<Preference>("about")?.summary = "Руслан Agent v${versionName}"
         }
 
         private fun shareLog() {
@@ -81,7 +83,10 @@ class SettingsActivity : AppCompatActivity() {
                     type = "text/plain"
                     putExtra(Intent.EXTRA_STREAM, uri)
                     putExtra(Intent.EXTRA_SUBJECT, "Ruslan Agent Log")
-                    putExtra(Intent.EXTRA_TEXT, "Лог-файл Руслан Agent v${BuildConfig.VERSION_NAME}\nУстройство: ${android.os.Build.MODEL}\nAndroid: ${android.os.Build.VERSION.RELEASE}")
+                    val vName = try {
+                        ctx.packageManager.getPackageInfo(ctx.packageName, 0).versionName ?: "?"
+                    } catch (e: Exception) { "?" }
+                    putExtra(Intent.EXTRA_TEXT, "Лог-файл Руслан Agent v${vName}\nУстройство: ${android.os.Build.MODEL}\nAndroid: ${android.os.Build.VERSION.RELEASE}")
                     addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                 }
                 startActivity(Intent.createChooser(intent, "Отправить лог"))

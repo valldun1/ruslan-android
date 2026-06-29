@@ -10,7 +10,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import ru.valldun.ruslan.databinding.ActivityChatBinding
-import ru.valldun.ruslan.BuildConfig
 import java.io.OutputStreamWriter
 import java.net.ConnectException
 import java.net.HttpURLConnection
@@ -186,7 +185,7 @@ class ChatActivity : AppCompatActivity() {
     private fun addWelcomeMessage() {
         adapter.addMessage(
             ChatMessage(
-                text = "> Руслан Agent v${BuildConfig.VERSION_NAME}\n" +
+                text = "> Руслан Agent v${getVersion()}\n" +
                         "> Терминал: ${gatewayUrl}\n" +
                         "> Введи команду или вопрос\n" +
                         ">\n" +
@@ -195,6 +194,12 @@ class ChatActivity : AppCompatActivity() {
                 status = MessageStatus.SENT
             )
         )
+    }
+
+    private fun getVersion(): String {
+        return try {
+            packageManager.getPackageInfo(packageName, 0).versionName ?: "?"
+        } catch (e: Exception) { "?" }
     }
 
     private fun sendMessage() {
