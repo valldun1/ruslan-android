@@ -140,24 +140,24 @@ class ProviderConfigActivity : AppCompatActivity() {
             Toast.makeText(this, "Нет активного провайдера", Toast.LENGTH_SHORT).show()
             return
         }
-        // Write proxy config JSON (читается Python прокси)
-        val configFile = java.io.File(filesDir, "hermes/ruslan-provider.json")
+        // Write proxy config (читается Go агентом)
+        val configDir = java.io.File(filesDir, "hermes")
+        configDir.mkdirs()
+        val configFile = java.io.File(configDir, "ruslan-provider.json")
         try {
-            configFile.parentFile?.mkdirs()
-            val json = org.json.JSONObject().apply {
+            configFile.writeText(org.json.JSONObject().apply {
                 put("provider", active.id)
                 put("apiKey", active.apiKey)
                 put("model", active.defaultModel)
                 put("baseUrl", active.baseUrl)
-            }
-            configFile.writeText(json.toString(2))
-            // Tell Python proxy to reload config
+            }.toString(2))
+
+            // Restart Go agent with new config
             try {
-                if (com.chaquo.python.Python.isStarted()) {
-                    val py = com.chaquo.python.Python.getInstance()
-                    val result = py.getModule("ruslan_proxy").callAttr("reload_config").toString()
-                    Logger.i("ProviderCfg", "Proxy reload: $result")
-                }
+                val intent = android.content.Intent(this, GatewayService::class.java)
+                intent.action = GatewayService.ACTION_RESTART
+                startService(intent)
+                Logger.i("ProviderCfg", "Go agent restart requested")
             } catch (_: Exception) {}
             Toast.makeText(this, "✓ Провайдер ${active.name} сохранён", Toast.LENGTH_SHORT).show()
         } catch (e: Exception) {

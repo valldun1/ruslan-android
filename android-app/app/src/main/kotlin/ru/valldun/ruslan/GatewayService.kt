@@ -14,12 +14,11 @@ import android.os.Looper
 import android.os.PowerManager
 import android.util.Log
 import androidx.core.app.NotificationCompat
-import com.chaquo.python.Python
-import com.chaquo.python.android.AndroidPlatform
+import androidx.preference.PreferenceManager
 
 /**
- * GatewayService — runs the Ruslan proxy as foreground service.
- * Uses Chaquopy (in-process Python) instead of Termux subprocess.
+ * GatewayService — runs the Ruslan Go agent as foreground service.
+ * Manages the Go binary process lifecycle.
  */
 class GatewayService : Service() {
 
@@ -29,6 +28,7 @@ class GatewayService : Service() {
     private var healthCheckHandler: Handler? = null
     private var healthCheckTask: Runnable? = null
     private var healthFailCount = 0
+    private var goManager: GoProcessManager? = null
 
     override fun onCreate() {
         super.onCreate()
@@ -39,18 +39,7 @@ class GatewayService : Service() {
             PowerManager.PARTIAL_WAKE_LOCK,
             "Ruslan::GatewayWakeLock"
         )
-
-        // Initialize Chaquopy Python
-        if (!Python.isStarted()) {
-            Logger.i(TAG, "Starting Chaquopy Python...")
-            try {
-                Python.start(AndroidPlatform(this))
-                Logger.i(TAG, "Chaquopy Python started")
-            } catch (e: Exception) {
-                Logger.e(TAG, "Chaquopy init failed", e)
-                _lastProxyError = "Python init: ${e.message}"
-            }
-        }
+        goManager = GoProcessManager(this)
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -82,52 +71,36 @@ class GatewayService : Service() {
         acquireWakeLock()
         startForeground(NOTIFICATION_ID, createNotification())
 
+        // Start Go binary in background thread
         Thread {
-            runProxyInChaquopy()
-        }.start()
+            val success = goManager?.start() ?: false
+            if (success) {
+                _proxyReady = true
+                Logger.i(TAG, "=== Ruslan Go Agent started on :9123 ===")
+
+                // Keep thread alive to maintain service
+                while (isRunning && goManager?.isAlive() == true) {
+                    try {
+                        Thread.sleep(30_000)
+                    } catch (e: InterruptedException) {
+                        break
+                    }
+                }
+                if (isRunning && goManager?.isAlive() != true) {
+                    Logger.w(TAG, "Go agent died unexpectedly")
+                    _proxyReady = false
+                }
+            } else {
+                Logger.e(TAG, "Go agent failed to start")
+                _proxyReady = false
+            }
+        }.apply {
+            isDaemon = true
+            start()
+        }
 
         // Start health check polling
         startHealthCheck()
-    }
-
-    private fun runProxyInChaquopy() {
-        Logger.i(TAG, "runProxyInChaquopy() starting...")
-        try {
-            val py = Python.getInstance()
-            val module = py.getModule("ruslan_proxy")
-            Logger.d(TAG, "Got Python module: ruslan_proxy")
-
-            // Config directory — app private files
-            val configDir = filesDir.resolve("hermes").absolutePath
-            Logger.i(TAG, "Calling start_server(9123, $configDir)")
-
-            // Start the proxy server
-            val result = module.callAttr("start_server", 9123, configDir).toString()
-            Logger.i(TAG, "Proxy start result: $result")
-
-            if (result == "ok") {
-                Logger.i(TAG, "=== Ruslan Proxy started on :9123 ===")
-                _proxyReady = true
-                // The server runs in a daemon thread — this call returns immediately.
-                // We keep this thread alive to detect if the app is being killed.
-                while (isRunning) {
-                    Thread.sleep(30_000)
-                    // Periodic heartbeat
-                    if (!isRunning) break
-                }
-            } else if (result == "already_running") {
-                Logger.i(TAG, "Proxy already running — reusing")
-                while (isRunning) {
-                    Thread.sleep(30_000)
-                    if (!isRunning) break
-                }
-            } else {
-                Logger.e(TAG, "Proxy failed to start: $result")
-            }
-        } catch (e: Exception) {
-            Logger.e(TAG, "Python proxy error", e)
-            _lastProxyError = e.message
-        }
     }
 
     private fun startHealthCheck() {
@@ -137,7 +110,7 @@ class GatewayService : Service() {
         healthCheckTask = object : Runnable {
             override fun run() {
                 if (!isRunning) return
-                val healthy = checkProxyHealth()
+                val healthy = goManager?.healthCheck() ?: false
                 if (healthy) {
                     healthFailCount = 0
                     Logger.d(TAG, "Health check OK")
@@ -156,41 +129,12 @@ class GatewayService : Service() {
         healthCheckHandler?.postDelayed(healthCheckTask!!, 30_000)
     }
 
-    private fun checkProxyHealth(): Boolean {
-        // Since the Python proxy runs in-process (Chaquopy), we don't need HTTP.
-        // Check the in-memory flag set by runProxyInChaquopy() after successful start.
-        if (_proxyReady) return true
-
-        // Fallback: try raw socket connect (no HTTP, avoids cleartext issues)
-        try {
-            val socket = java.net.Socket()
-            socket.connect(java.net.InetSocketAddress("127.0.0.1", 9123), 1000)
-            socket.close()
-            _proxyReady = true
-            return true
-        } catch (e: Exception) {
-            Logger.d(TAG, "Health check: socket connect failed (${e::class.simpleName}: ${e.message})")
-            return false
-        }
-    }
-
     private fun restartProxy() {
         Logger.i(TAG, "Restarting proxy...")
         try {
-            if (Python.isStarted()) {
-                val py = Python.getInstance()
-                val module = py.getModule("ruslan_proxy")
-                module.callAttr("stop_server")
-                Logger.d(TAG, "Proxy stopped, restarting...")
-            }
-            Thread.sleep(1000)
-            val configDir = filesDir.resolve("hermes").absolutePath
-            if (Python.isStarted()) {
-                val py = Python.getInstance()
-                val module = py.getModule("ruslan_proxy")
-                val result = module.callAttr("start_server", 9123, configDir).toString()
-                Logger.i(TAG, "Proxy restart result: $result")
-            }
+            goManager?.stop()
+            Thread.sleep(2000)
+            goManager?.start()
         } catch (e: Exception) {
             Logger.e(TAG, "Proxy restart failed", e)
         }
@@ -204,17 +148,8 @@ class GatewayService : Service() {
         wakeLockReacquireTask?.let { wakeLockHandler?.removeCallbacks(it) }
         healthCheckTask?.let { healthCheckHandler?.removeCallbacks(it) }
 
-        // Stop Python proxy
-        try {
-            if (Python.isStarted()) {
-                val py = Python.getInstance()
-                val module = py.getModule("ruslan_proxy")
-                module.callAttr("stop_server")
-                Logger.i(TAG, "Proxy stopped")
-            }
-        } catch (e: Exception) {
-            Logger.e(TAG, "Error stopping proxy", e)
-        }
+        // Stop Go agent
+        goManager?.stop()
 
         if (wakeLock.isHeld) {
             wakeLock.release()

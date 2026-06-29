@@ -17,7 +17,7 @@ class BootReceiver : BroadcastReceiver() {
 
             if (autoStart) {
                 Log.d(TAG, "Auto-starting gateway service")
-                // Chaquopy Python starts inside GatewayService automatically
+                // Go бинарник запускается внутри GatewayService автоматически
                 val serviceIntent = Intent(context, GatewayService::class.java)
                 ContextCompat.startForegroundService(context, serviceIntent)
             } else {

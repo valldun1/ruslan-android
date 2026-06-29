@@ -1,109 +1,64 @@
 # 🤖 Руслан Agent для Android
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Android](https://img.shields.io/badge/Android-7.0+-brightgreen)](https://developer.android.com/)
-[![Python](https://img.shields.io/badge/Chaquopy-Python%203.11-3776AB)](https://chaquo.com/chaquopy/)
+[![Android](https://img.shields.io/badge/Android-8.0+-brightgreen)](https://developer.android.com/)
+[![Go](https://img.shields.io/badge/Go-1.23-00ADD8)](https://go.dev/)
 
-> **Ruslan Agent** — AI-агент на Android. Один APK, полная автономность, Telegram gateway.
-> **v0.18+:** Chaquopy edition — встроенный Python 3.11, без Termux, без распаковки при первом запуске.
+**Руслан** — AI-помощник с морской душой. Нативное Android-приложение.
 
-## ⚡ Быстрый старт
+## 🚀 Особенности
 
-1. Скачай `ruslan-agent.apk` из [Releases](../../releases)
-2. Установи на Android 7.0+
-3. Открой → пройди Setup Wizard (4 шага)
-4. Готово! Gateway запустится автоматически
+- Чат с AI через LLM (OpenAI, DeepSeek, YandexGPT, GigaChat и др.)
+- Голосовой ввод
+- Telegram-бот (встроенный)
+- Работа с файлами
+- Настройка провайдеров через UI
+- Работает на Android 8.0+
 
-## ✨ Возможности
-
-| Функция | Описание |
-|---------|----------|
-| 🎮 **One APK** | Python 3.11 + Руслан в одном файле (Chaquopy) |
-| 🤖 **AI-агент** | DeepSeek, OpenAI, Anthropic, Gemini, OpenRouter |
-| 💬 **Telegram** | Полный gateway с голосовыми сообщениями |
-| 🔄 **Auto-restart** | При падении — восстановление за 5 сек |
-| 🔋 **Boot start** | Автозапуск при включении телефона |
-| 🛡️ **HyperOS fix** | Не убивается системой |
-| 📡 **Streaming** | SSE-потоковая передача токенов в реальном времени |
-| 🩺 **Health-check** | Автоматический мониторинг /health endpoint |
-
-## 🏗️ Архитектура (Chaquopy)
+## 🏗 Архитектура v2.0
 
 ```
-ruslan-agent.apk
-├── Android App (Kotlin)     ← UI, управление, уведомления
-├── Python 3.11 (Chaquopy)   ← Встроенный CPython, НЕ Termux
-│   ├── ruslan_proxy.py      ← HTTP-proxy с SSE streaming
-│   ├── httpx, pydantic, etc ← pip-пакеты, предустановлены при сборке
-│   └── Providers: opencode-go, deepseek, openai, google, anthropic
-└── Config & Providers       ← SharedPreferences + JSON
+Android App (Kotlin) → Go-бинарник (ruslan-agent) → LLM API
 ```
 
-### Отличия от Termux-версии (v0.17)
+Go-ядро (репозиторий: [valldun1/go_ruslan_team](https://github.com/valldun1/go_ruslan_team)):
+- HTTP API на :9123
+- Поддержка 6+ LLM провайдеров
+- Agent Loop с памятью и инструментами
+- Telegram Gateway (long polling)
+- Конфигурация через YAML
 
-| Что | Termux (старая) | Chaquopy (новая) |
-|-----|----------------|-------------------|
-| Размер APK | ~120 MB | ~50 MB |
-| Первый запуск | Распаковка .tar.zst (30-120 сек) | Мгновенный |
-| Python | Отдельный Linux userspace | Встроен в APK |
-| pip пакеты | Установка на устройстве | Предустановлены при сборке |
-| Зависимости | zstd, tar, commons-compress | Только Chaquopy |
-
-## 📁 Структура репозитория
-
-```
-ruslan-android/
-├── android-app/          ← Android проект (Kotlin + Chaquopy)
-│   └── app/src/main/
-│       ├── kotlin/       ← Activities, Services, Receivers
-│       └── python/       ← Python proxy (Chaquopy)
-├── scripts/              ← CI/CD скрипты
-├── .github/workflows/    ← GitHub Actions
-└── phases/               ← Проектная документация
-```
-
-## 🚀 Сборка из исходников
-
-### Требования
-- Ubuntu 22.04+ или macOS
-- Android SDK + NDK (26.x)
-- JDK 17
-
-### Локальная сборка
+## 📲 Сборка
 
 ```bash
-git clone https://github.com/valldun1/ruslan-android.git
-cd ruslan-android/android-app
+# Требуется: Android SDK, Java 17, Go 1.23
+
+# 1. Собрать Go-бинарник для Android
+cd go_ruslan_team
+make build-android
+
+# 2. Скопировать в assets
+cp bin/ruslan-android-arm64 ../ruslan-android/android-app/app/src/main/assets/ruslan/arm64-v8a/
+
+# 3. Собрать APK
+cd ../ruslan-android/android-app
 ./gradlew assembleDebug
-# APK: app/build/outputs/apk/debug/app-debug.apk
 ```
 
-### CI/CD (GitHub Actions)
+## 📦 Загрузка
 
-При пуше в `main`:
-1. Chaquopy скачивает и встраивает Python 3.11
-2. pip-пакеты устанавливаются на этапе сборки
-3. Gradle собирает APK (debug + release)
-4. Release APK подписывается apksigner (v2+v3)
+Свежие сборки APK — в [GitHub Actions](https://github.com/valldun1/ruslan-android/actions).
 
-## 🎨 Дизайн
+## ⚙ Настройка
 
-- **Тема:** Dark cyberpunk
-- **Акцент:** Cyan (#00d4ff)
-- **Персонаж:** Бородатый воин с молнией
-- **Шрифт:** Inter / Roboto
+1. Установи APK
+2. Открой Настройки → Провайдер
+3. Выбери провайдера (OpenAI, DeepSeek, Yandex и др.)
+4. Введи API-ключ
+5. Готово! Можно общаться.
 
-## 🔐 Безопасность
+Для Telegram: укажи токен бота в Настройки → Telegram.
 
-- API ключи в `SharedPreferences` (app-private storage)
-- `allowBackup=false` — ключи НЕ утекают в Google Drive
-- Никакой телеметрии без explicit opt-in
-- Код открыт, можно проверить
+## 🔐 Лицензия
 
-## 📄 Лицензия
-
-MIT License — см. [LICENSE](LICENSE)
-
----
-
-**Сделано с ❤️ для Руслана**
+MIT License.
