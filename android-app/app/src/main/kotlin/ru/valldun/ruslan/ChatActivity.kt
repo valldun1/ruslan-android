@@ -359,7 +359,7 @@ class ChatActivity : AppCompatActivity() {
             }
             conn.doOutput = true
             conn.connectTimeout = 15000
-            conn.readTimeout = 120000  // 2 min for LLM streaming
+            conn.readTimeout = 60000  // 1 min for non-streaming
 
             // Build JSON body manually (no libs needed)
             val modelName = if (gatewayModel.isNotEmpty()) gatewayModel else "deepseek-chat"
@@ -369,7 +369,7 @@ class ChatActivity : AppCompatActivity() {
                 .replace("\n", "\\n")
                 .replace("\r", "\\r")
                 .replace("\t", "\\t")
-            val body = """{"model":"$modelName","messages":[{"role":"user","content":"$escaped"}],"stream":true}"""
+            val body = """{"model":"$modelName","messages":[{"role":"user","content":"$escaped"}],"stream":false}"""
 
             Logger.i(TAG, "POST $url model=$modelName body_len=${body.length}")
 
