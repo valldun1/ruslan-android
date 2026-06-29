@@ -8,6 +8,7 @@ import androidx.core.content.FileProvider
 import androidx.preference.Preference
 import androidx.preference.PreferenceFragmentCompat
 import androidx.preference.SwitchPreferenceCompat
+import ru.valldun.ruslan.BuildConfig
 import java.io.File
 
 class SettingsActivity : AppCompatActivity() {

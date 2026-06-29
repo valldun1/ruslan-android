@@ -10,6 +10,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import ru.valldun.ruslan.databinding.ActivityChatBinding
+import ru.valldun.ruslan.BuildConfig
 import java.io.OutputStreamWriter
 import java.net.ConnectException
 import java.net.HttpURLConnection
