@@ -1,23 +1,26 @@
-# Context — Ruslan Android APK
+# 00-context.md
 
-## Проект
-- Репозиторий: https://github.com/valldun1/ruslan-android (private)
-- APK: Termux-based agent, собирается на GitHub Actions
-- Устройство: Android 15 (huaqin GC02)
+## Проект: Руслан Agent (Android, Chaquopy)
 
-## Текущий статус
-- ✅ Проблема найдена: в workflow `build-apk.yml` использовался `jarsigner` (только v1 подпись)
-- ✅ Фикс запушен: `jarsigner` → `apksigner` с v2+v3, zipalign до подписи
-- ✅ Новый билд #28301450965 завершён успешно
-- ✅ GH CLI настроен, APK скачан (`ruslan-agent.apk`, 20MB)
-- ⚠️ `pm install` из Termux не работает (SecurityException)
-- ⚠️ `termux-open` запущен — ждём установку пользователем
+### Стек
+- Android 15 (Xiaomi 24117RN76E, HyperOS)
+- Kotlin + Chaquopy (Python в APK)
+- Python proxy (http.server, ThreadingHTTPServer)
+- GitHub: valldun1/ruslan-android (master)
+- CI: GitHub Actions (debug APK ~23 MB)
+- Версия: v0.23.0
 
-## Инфраструктура
-- GH_TOKEN: есть (классический PAT, частично рабочий — API чтение да, артефакты нет)
-- gh CLI: залогинен через GH_TOKEN
-- Android SDK/Tools: нет локально (только android-tools pkg без apksigner)
-- JDK/Gradle: нет локально — всё через GH Actions
+### Состояние
+- Proxy запускается, health check OK
+- DeepSeek выбран, модель = deepseek-chat / deepseek-v4-flash
+- Чат: 401 "Authentication Fails (governor)" — ключ не принимается
+- Wizard нет выбора модели
+- Нет сохранения модели в config при первом запуске (model: "")
+- HTTP 1-поточный (HTTPServer) → socket timeout при стриминге → FIXED: ThreadingHTTPServer
+- readTimeout 60s → FIXED: 120s
+- reload_config не вызывался после визарда → FIXED
+- Кнопки зелёные в AlertDialog → FIXED
 
-## Цикл
-Нужен автоцикл: фикс → коммит → пуш → дождаться билда → скачать APK → установить → проверить ошибки → повторить.
+### Оставшиеся проблемы
+1. 401 Authentication Fails — ключ DeepSeek не валидный? Или идёт на OpenRouter?
+2. Нет выбора модели в визарде

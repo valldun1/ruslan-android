@@ -27,6 +27,24 @@ class SetupWizardActivity : AppCompatActivity() {
 
         TabLayoutMediator(binding.tabLayout, binding.viewPager) { _, _ -> }.attach()
 
+        // Sync provider selection → model step when navigating
+        binding.viewPager.registerOnPageChangeCallback(object : ViewPager2.OnPageChangeCallback() {
+            override fun onPageSelected(position: Int) {
+                if (position == 2) {
+                    // Going to model step — read provider from step 2 and pass to model step
+                    val step2 = adapter.getFragmentAt(1)
+                    if (step2 is WizardStep2Fragment) {
+                        val provider = step2.getSelectedProvider()
+                        val stepModel = adapter.getFragmentAt(2)
+                        if (stepModel is WizardStepModelFragment) {
+                            stepModel.setProvider(provider)
+                        }
+                    }
+                }
+                updateButtonText()
+            }
+        })
+
         binding.btnNext.setOnClickListener {
             val currentItem = binding.viewPager.currentItem
             if (currentItem < adapter.itemCount - 1) {
@@ -46,11 +64,12 @@ class SetupWizardActivity : AppCompatActivity() {
     private fun finishWizard() {
         // Collect data from wizard fragments
         var selectedProvider = "deepseek"
+        var selectedModel = ""
         var apiKey = ""
 
         // Try to read Step 2 (provider selection)
         try {
-            val step2 = adapter.getFragmentAt(1) // Fragment at position 1
+            val step2 = adapter.getFragmentAt(1)
             if (step2 is WizardStep2Fragment) {
                 selectedProvider = step2.getSelectedProvider()
             }
@@ -58,52 +77,52 @@ class SetupWizardActivity : AppCompatActivity() {
             // Default: deepseek
         }
 
-        // Try to read Step 3 (API key)
+        // Try to read Step 3 (model selection) — position 2
         try {
-            val step3 = adapter.getFragmentAt(2)
+            val stepModel = adapter.getFragmentAt(2)
+            if (stepModel is WizardStepModelFragment) {
+                selectedModel = stepModel.getSelectedModel()
+            }
+        } catch (e: Exception) {}
+
+        // Try to read Step 4 (API key) — position 3
+        try {
+            val step3 = adapter.getFragmentAt(3)
             if (step3 is WizardStep3Fragment) {
                 apiKey = step3.getApiKey()
             }
         } catch (e: Exception) {}
 
-        // Save provider config — merge with built-in to preserve baseUrl/model
+        // Save provider config
         val providerManager = ProviderManager(this)
         providerManager.initDefaults()
 
-        // Look up built-in config to get baseUrl and defaultModel
         val builtIn = ProviderConfig.BUILT_IN.find { it.id == selectedProvider }
+        val finalModel = if (selectedModel.isNotEmpty()) selectedModel else (builtIn?.defaultModel ?: "")
 
         val provider = ProviderConfig(
             id = selectedProvider,
-            name = when (selectedProvider) {
-                "deepseek" -> "DeepSeek"
-                "opencode-go" -> "OpenCode Go"
-                "openai" -> "OpenAI"
-                "anthropic" -> "Anthropic"
-                "openrouter" -> "OpenRouter"
-                "google" -> "Google Gemini"
-                else -> selectedProvider
-            },
+            name = builtIn?.name ?: selectedProvider,
             apiKey = apiKey,
             baseUrl = builtIn?.baseUrl ?: "",
-            defaultModel = builtIn?.defaultModel ?: "",
+            defaultModel = finalModel,
             isActive = true
         )
         providerManager.addOrUpdateProvider(provider)
         providerManager.setActiveProvider(selectedProvider)
 
-        // Write proxy config JSON immediately
+        // Write proxy config JSON
         try {
             val configFile = java.io.File(filesDir, "hermes/ruslan-provider.json")
             configFile.parentFile?.mkdirs()
             val json = org.json.JSONObject().apply {
                 put("provider", selectedProvider)
                 put("apiKey", apiKey)
-                put("baseUrl", "")
-                put("model", builtIn?.defaultModel ?: "")
+                put("baseUrl", builtIn?.baseUrl ?: "")
+                put("model", finalModel)
             }
             configFile.writeText(json.toString(2))
-            // Tell Python proxy to reload config
+            // Reload Python proxy config
             try {
                 if (com.chaquo.python.Python.isStarted()) {
                     val py = com.chaquo.python.Python.getInstance()
@@ -123,13 +142,10 @@ class SetupWizardActivity : AppCompatActivity() {
         val intent = Intent(this, MainActivity::class.java)
         startActivity(intent)
 
-        // Start gateway service in background
         try {
             val serviceIntent = Intent(this, GatewayService::class.java)
             ContextCompat.startForegroundService(this, serviceIntent)
-        } catch (e: Exception) {
-            // Ignore - user can start from settings
-        }
+        } catch (e: Exception) {}
 
         finish()
     }

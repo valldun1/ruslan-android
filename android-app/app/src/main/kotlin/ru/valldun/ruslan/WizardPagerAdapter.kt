@@ -8,13 +8,14 @@ class WizardPagerAdapter(activity: FragmentActivity) : FragmentStateAdapter(acti
 
     private val fragments = mutableListOf<Fragment?>()
 
-    override fun getItemCount(): Int = 3
+    override fun getItemCount(): Int = 4
 
     override fun createFragment(position: Int): Fragment {
         val fragment = when (position) {
             0 -> WizardStep1Fragment()
             1 -> WizardStep2Fragment()
-            2 -> WizardStep3Fragment()
+            2 -> WizardStepModelFragment()
+            3 -> WizardStep3Fragment()
             else -> throw IllegalArgumentException("Invalid position: $position")
         }
         // Store for later access

@@ -29,5 +29,25 @@ data class ProviderConfig(
             ProviderConfig("ollama", "Ollama (локальный)", baseUrl = "http://localhost:11434/v1", defaultModel = "llama3.2"),
             ProviderConfig("custom", "Пользовательский", baseUrl = "https://", defaultModel = ""),
         )
+
+        val PROVIDER_MODELS: Map<String, List<String>> = mapOf(
+            "deepseek" to listOf("deepseek-chat", "deepseek-reasoner", "deepseek-v4-flash"),
+            "opencode-go" to listOf("deepseek-v4-flash", "kimi-k2.5"),
+            "openai" to listOf("gpt-4o", "gpt-4o-mini", "o3-mini"),
+            "anthropic" to listOf("claude-sonnet-4-20250514", "claude-3-5-sonnet-20240620"),
+            "openrouter" to listOf("deepseek/deepseek-chat", "openai/gpt-4o", "anthropic/claude-sonnet-4"),
+            "google" to listOf("gemini-2.0-flash", "gemini-1.5-flash", "gemini-1.5-pro"),
+            "grok" to listOf("grok-3", "grok-3-mini"),
+            "yandex" to listOf("yandexgpt-lite", "yandexgpt-pro"),
+            "gigachat" to listOf("GigaChat-Max", "GigaChat-Plus", "GigaChat-Standard"),
+            "glm" to listOf("glm-5.2", "glm-4-plus"),
+            "qwen" to listOf("qwen-plus", "qwen-max", "qwen-turbo"),
+            "mistral" to listOf("mistral-large-latest", "mistral-small-latest"),
+            "perplexity" to listOf("sonar", "sonar-pro"),
+            "ollama" to listOf("llama3.2", "llama3.1", "mistral"),
+        )
+
+        fun getModelsForProvider(providerId: String): List<String> =
+            PROVIDER_MODELS[providerId] ?: listOf("default")
     }
 }
