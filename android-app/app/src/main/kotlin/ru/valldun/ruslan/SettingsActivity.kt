@@ -1,10 +1,15 @@
 package ru.valldun.ruslan
 
+import android.app.AlertDialog
+import android.content.Context
 import android.content.Intent
+import android.graphics.Color
 import android.os.Bundle
+import android.widget.EditText
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.FileProvider
+import androidx.preference.EditTextPreference
 import androidx.preference.Preference
 import androidx.preference.PreferenceFragmentCompat
 import androidx.preference.SwitchPreferenceCompat
@@ -36,9 +41,39 @@ class SettingsActivity : AppCompatActivity() {
                 true
             }
 
-            // Navigate to chat settings
+            // Telegram users — custom dialog with black buttons (HyperOS fix)
+            findPreference<EditTextPreference>("telegram_users")?.setOnPreferenceChangeListener { pref, newValue ->
+                val text = newValue as? String ?: ""
+                pref.summary = if (text.isEmpty()) "@username или ID через запятую" else text
+                true
+            }
+            findPreference<Preference>("telegram_users")?.setOnPreferenceClickListener {
+                val ctx = requireContext()
+                val prefs = ctx.getSharedPreferences(ctx.packageName + "_preferences", Context.MODE_PRIVATE)
+                val current = prefs.getString("telegram_users", "") ?: ""
+                val input = EditText(ctx).apply {
+                    setText(current)
+                    setSelection(current.length)
+                }
+                val dialog = AlertDialog.Builder(ctx)
+                    .setTitle("Разрешённые пользователи")
+                    .setView(input)
+                    .setPositiveButton("OK") { _, _ ->
+                        val text = input.text.toString().trim()
+                        prefs.edit().putString("telegram_users", text).apply()
+                        findPreference<EditTextPreference>("telegram_users")?.text = text
+                        Toast.makeText(ctx, if (text.isEmpty()) "Разрешены все" else "Сохранено: $text", Toast.LENGTH_SHORT).show()
+                    }
+                    .setNegativeButton("Отмена", null)
+                    .show()
+                dialog.getButton(AlertDialog.BUTTON_POSITIVE)?.setTextColor(Color.BLACK)
+                dialog.getButton(AlertDialog.BUTTON_NEGATIVE)?.setTextColor(Color.BLACK)
+                true
+            }
+
+            // Navigate to chat settings (telegram button — not needed, kept for compat)
             findPreference<Preference>("telegram")?.setOnPreferenceClickListener {
-                // TODO: Telegram settings
+                Toast.makeText(requireContext(), "Настрой Telegram ниже", Toast.LENGTH_SHORT).show()
                 true
             }
 
