@@ -31,6 +31,7 @@
         <item name="materialButtonStyle">@style/Widget.Ruslan.Button</item>
         <item name="materialCardViewStyle">@style/Widget.Ruslan.Card</item>
         <item name="switchStyle">@style/Widget.Ruslan.Switch</item>
+        <item name="buttonBarButtonStyle">@style/Widget.Ruslan.DialogButton</item>
     </style>
 
     <!-- Preference theme (uses same dark background) -->
@@ -95,5 +96,10 @@
     <style name="Widget.Ruslan.Switch" parent="Widget.Material3.CompoundButton.MaterialSwitch">
         <item name="thumbTint">@color/accent_green</item>
         <item name="trackTint">@color/bg_surface</item>
+    </style>
+
+    <!-- Dialog button style — black text on green -->
+    <style name="Widget.Ruslan.DialogButton" parent="Widget.Material3.Button.TextButton.Dialog">
+        <item name="android:textColor">@color/btn_secondary_text</item>
     </style>
 </resources>
