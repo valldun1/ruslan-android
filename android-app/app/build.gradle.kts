@@ -1,8 +1,8 @@
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
-    id("com.chaquo.python")
 }
+apply(plugin = "com.chaquo.python")
 
 android {
     namespace = "ru.valldun.ruslan"
