@@ -17,8 +17,9 @@ import threading
 from pathlib import Path
 PROVIDERS = {
     "opencode-go": {
-        "baseUrl": "https://opencode.ai/zen/go",
+        "baseUrl": "http://127.0.0.1:9123",
         "model": "deepseek-v4-flash",
+        "noKey": True,
     },
     "deepseek": {
         "baseUrl": "https://api.deepseek.com",
@@ -102,7 +103,7 @@ def _log(msg: str) -> None:
 
 
 def _load_config() -> dict:
-    cfg = {"provider": "opencode-go", "apiKey": "", "model": "", "baseUrl": ""}
+    cfg = {"provider": "deepseek", "apiKey": "", "model": "", "baseUrl": ""}
     if CONFIG_PATH and os.path.exists(CONFIG_PATH):
         try:
             with open(CONFIG_PATH) as f:
@@ -356,9 +357,10 @@ class _Handler(http.server.BaseHTTPRequestHandler):
             return
 
         cfg = _config  # read once
-        if not j.get("model"):
+        if not j.get("model") or j.get("model") == "default":
             j["model"] = cfg.get("model", "")
 
+        _log(f"CHAT req: model={j['model']} stream={j.get('stream')} cfg_provider={cfg.get('provider')}")
         want_stream = j.get("stream", False)
         style = cfg.get("pathStyle", "openai")
 
@@ -388,6 +390,7 @@ class _Handler(http.server.BaseHTTPRequestHandler):
 
         try:
             resp = urllib.request.urlopen(req, timeout=120)
+            _log(f"CHAT resp: {resp.status} from {cfg.get('provider')}")
             if style == "google":
                 raw = resp.read()
                 converted = _convert_google_response(json.loads(raw))
@@ -423,6 +426,7 @@ class _Handler(http.server.BaseHTTPRequestHandler):
             _last_error = f"HTTP {e.code}: {e.reason}"
             _log(f"HTTPError: {e.code} {e.reason}")
             error_body = e.read().decode(errors="replace") if e.fp else str(e)
+            _log(f"HTTPError body: {error_body[:300]}")
             self._send_response(e.code, "application/json",
                                json.dumps({"error": {"message": error_body[:500]}}).encode())
         except Exception as e:

@@ -33,6 +33,7 @@ class ChatActivity : AppCompatActivity() {
     // Gateway connection config — reads from JSON or defaults
     private var gatewayUrl = "http://127.0.0.1:9123"
     private var gatewayToken = ""
+    private var gatewayModel = ""
     private var speechRecognizer: SpeechRecognizer? = null
 
     private val recordAudioLauncher = registerForActivityResult(
@@ -62,7 +63,6 @@ class ChatActivity : AppCompatActivity() {
         // Gateway is ALWAYS at 127.0.0.1:9123 (local proxy, not the upstream provider URL)
         // gatewayUrl stays at default "http://127.0.0.1:9123"
 
-        // Try to read apiKey from provider config for Authorization header
         try {
             val configFile = java.io.File("${filesDir.absolutePath}/hermes/ruslan-provider.json")
             if (configFile.exists()) {
@@ -71,21 +71,16 @@ class ChatActivity : AppCompatActivity() {
                 if (json.has("apiKey") && !json.isNull("apiKey")) {
                     gatewayToken = json.getString("apiKey")
                 }
+                if (json.has("model") && !json.isNull("model")) {
+                    gatewayModel = json.getString("model")
+                }
+                val provider = json.optString("provider", "?")
+                Log.d(TAG, "config loaded: provider=$provider model=$gatewayModel hasKey=${gatewayToken.isNotEmpty()}")
+            } else {
+                Log.d(TAG, "no config file found at ${configFile.absolutePath}")
             }
         } catch (e: Exception) {
-            // Use default token
-        }
-        // Also try .env fallback for backward compat
-        if (gatewayToken.isEmpty()) {
-            try {
-                val envFile = java.io.File("${filesDir.absolutePath}/hermes/.env")
-                if (envFile.exists()) {
-                    envFile.readLines().forEach { line ->
-                        if (line.startsWith("API_KEY="))
-                            gatewayToken = line.substringAfter("=").trim().trim('"')
-                    }
-                }
-            } catch (_: Exception) {}
+            Log.e(TAG, "loadGatewayConfig error", e)
         }
     }
 
@@ -299,19 +294,7 @@ class ChatActivity : AppCompatActivity() {
         val text = binding.etMessage.text.toString().trim()
         if (text.isEmpty()) return
 
-        // Warn if no API key configured (for cloud providers)
-        if (gatewayToken.isEmpty()) {
-            adapter.addMessage(
-                ChatMessage(
-                    text = "⚠ Не настроен API-ключ провайдера\n" +
-                            "Зайди в настройки → Провайдеры и выбери/настрой модель",
-                    isUser = false,
-                    status = MessageStatus.ERROR
-                )
-            )
-            binding.rvMessages.scrollToPosition(adapter.itemCount - 1)
-            return
-        }
+        Log.d(TAG, "sendMessage: text.length=${text.length} gatewayToken.isEmpty=${gatewayToken.isEmpty()} model=$gatewayModel")
 
         // Add user message to chat
         val userMessage = ChatMessage(
@@ -372,20 +355,24 @@ class ChatActivity : AppCompatActivity() {
             val conn = url.openConnection() as HttpURLConnection
             conn.requestMethod = "POST"
             conn.setRequestProperty("Content-Type", "application/json")
-            conn.setRequestProperty("Authorization", "Bearer $gatewayToken")
+            if (gatewayToken.isNotEmpty()) {
+                conn.setRequestProperty("Authorization", "Bearer $gatewayToken")
+            }
             conn.doOutput = true
             conn.connectTimeout = 15000
             conn.readTimeout = 60000  // longer for LLM responses
 
             // Escape message for JSON (basic escaping)
             val escaped = message
-                .replace("\\", "\\\\")
-                .replace("\"", "\\\"")
-                .replace("\n", "\\n")
-                .replace("\r", "\\r")
-                .replace("\t", "\\t")
-            val body = """{"model":"default","messages":[{"role":"user","content":"$escaped"}],"stream":true}"""
+                .replace("\\\\", "\\\\\\\\")
+                .replace("\\\"", "\\\\\\\"")
+                .replace("\\n", "\\\\n")
+                .replace("\\r", "\\\\r")
+                .replace("\\t", "\\\\t")
+            val modelName = if (gatewayModel.isNotEmpty()) gatewayModel else "default"
+            val body = """{"model":"$modelName","messages":[{"role":"user","content":"$escaped"}],"stream":true}"""
 
+            Log.d(TAG, "sending to $url model=$modelName")
             OutputStreamWriter(conn.outputStream).use { writer ->
                 writer.write(body)
                 writer.flush()
