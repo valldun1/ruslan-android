@@ -122,7 +122,7 @@ class LogsActivity : AppCompatActivity() {
             fun bind(entry: Logger.LogEntry) {
                 val color = when (entry.level) {
                     "ERROR" -> 0xFFFF4444.toInt()
-                    "WARN" -> 0xFFDD4444.toInt()
+                    "WARN" -> 0xFFFFAA00.toInt()
                     "INFO" -> 0xFF00FF88.toInt()
                     "DEBUG" -> 0xFF888888.toInt()
                     else -> 0xFFE5E5E5.toInt()

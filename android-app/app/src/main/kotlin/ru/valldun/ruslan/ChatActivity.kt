@@ -1,9 +1,18 @@
 package ru.valldun.ruslan
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
+import android.speech.RecognitionListener
+import android.speech.SpeechRecognizer
+import android.text.Html
 import android.util.Log
 import android.view.inputmethod.EditorInfo
+import android.widget.Toast
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import kotlinx.coroutines.Dispatchers
@@ -24,6 +33,14 @@ class ChatActivity : AppCompatActivity() {
     // Gateway connection config — reads from JSON or defaults
     private var gatewayUrl = "http://127.0.0.1:9123"
     private var gatewayToken = ""
+    private var speechRecognizer: SpeechRecognizer? = null
+
+    private val recordAudioLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        if (granted) startVoiceInput()
+        else Toast.makeText(this, "Нужно разрешение на микрофон", Toast.LENGTH_LONG).show()
+    }
 
     companion object {
         private const val TAG = "ChatActivity"
@@ -98,15 +115,9 @@ class ChatActivity : AppCompatActivity() {
         binding.btnSend.setOnClickListener { sendMessage() }
 
         // Voice button
-        binding.btnVoice.setOnClickListener {
-            adapter.addMessage(
-                ChatMessage(
-                    text = "🎤 [голосовой ввод]",
-                    isUser = true
-                )
-            )
-            saveHistory()
-        }
+        binding.btnVoice.setOnClickListener { checkMicrophonePermission() }
+
+        setupSpeechRecognizer()
 
         // Long-press on connection status — clear history
         binding.tvConnectionStatus.setOnLongClickListener {
@@ -189,6 +200,7 @@ class ChatActivity : AppCompatActivity() {
                         "> Терминал: ${gatewayUrl}\n" +
                         "> Введи команду или вопрос\n" +
                         ">\n" +
+                        "> 🎤 Нажми микрофон для голосового ввода\n" +
                         "> 💡 Долгое нажатие на статус — очистить чат",
                 isUser = false,
                 status = MessageStatus.SENT
@@ -202,9 +214,104 @@ class ChatActivity : AppCompatActivity() {
         } catch (e: Exception) { "?" }
     }
 
+    // --- Voice input ---
+
+    private fun setupSpeechRecognizer() {
+        if (!SpeechRecognizer.isRecognitionAvailable(this)) {
+            binding.btnVoice.isEnabled = false
+            return
+        }
+        speechRecognizer = SpeechRecognizer.createSpeechRecognizer(this).apply {
+            setRecognitionListener(object : RecognitionListener {
+                override fun onReadyForSpeech(params: Bundle?) {
+                    binding.tvConnectionStatus.text = "● слушаю..."
+                    binding.tvConnectionStatus.setTextColor(getColor(R.color.warning_yellow))
+                }
+                override fun onBeginningOfSpeech() {}
+                override fun onRmsChanged(rmsdB: Float) {}
+                override fun onBufferReceived(buffer: ByteArray?) {}
+                override fun onEndOfSpeech() {
+                    binding.tvConnectionStatus.text = "● online"
+                    binding.tvConnectionStatus.setTextColor(getColor(R.color.success_green))
+                }
+                override fun onError(error: Int) {
+                    binding.tvConnectionStatus.text = "● online"
+                    binding.tvConnectionStatus.setTextColor(getColor(R.color.success_green))
+                    val msg = when (error) {
+                        SpeechRecognizer.ERROR_NO_MATCH -> "Не распознано"
+                        SpeechRecognizer.ERROR_NETWORK -> "Ошибка сети"
+                        SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS -> "Нет разрешения"
+                        SpeechRecognizer.ERROR_NETWORK_TIMEOUT -> "Таймаут"
+                        SpeechRecognizer.ERROR_SPEECH_TIMEOUT -> "Не услышал речь"
+                        else -> "Ошибка распознавания ($error)"
+                    }
+                    if (error != SpeechRecognizer.ERROR_NO_MATCH) {
+                        Toast.makeText(this@ChatActivity, msg, Toast.LENGTH_SHORT).show()
+                    }
+                }
+                override fun onResults(results: Bundle?) {
+                    val matches = results?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
+                    val text = matches?.firstOrNull()
+                    if (!text.isNullOrEmpty()) {
+                        binding.etMessage.setText(text)
+                        binding.etMessage.setSelection(text.length)
+                        sendMessage()
+                    }
+                }
+                override fun onPartialResults(partialResults: Bundle?) {
+                    val matches = partialResults?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
+                    binding.etMessage.setText(matches?.firstOrNull() ?: "")
+                }
+                override fun onEvent(eventType: Int, params: Bundle?) {}
+            })
+        }
+    }
+
+    private fun checkMicrophonePermission() {
+        when {
+            ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED -> {
+                startVoiceInput()
+            }
+            shouldShowRequestPermissionRationale(Manifest.permission.RECORD_AUDIO) -> {
+                Toast.makeText(this, "Разрешение на микрофон нужно для голосового ввода", Toast.LENGTH_LONG).show()
+                recordAudioLauncher.launch(Manifest.permission.RECORD_AUDIO)
+            }
+            else -> recordAudioLauncher.launch(Manifest.permission.RECORD_AUDIO)
+        }
+    }
+
+    private fun startVoiceInput() {
+        val sr = speechRecognizer ?: return
+        val intent = android.content.Intent(android.speech.RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
+            putExtra(android.speech.RecognizerIntent.EXTRA_LANGUAGE_MODEL, android.speech.RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
+            putExtra(android.speech.RecognizerIntent.EXTRA_PARTIAL_RESULTS, true)
+            putExtra(android.speech.RecognizerIntent.EXTRA_LANGUAGE, "ru-RU")
+        }
+        sr.startListening(intent)
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        speechRecognizer?.destroy()
+    }
+
     private fun sendMessage() {
         val text = binding.etMessage.text.toString().trim()
         if (text.isEmpty()) return
+
+        // Warn if no API key configured (for cloud providers)
+        if (gatewayToken.isEmpty()) {
+            adapter.addMessage(
+                ChatMessage(
+                    text = "⚠ Не настроен API-ключ провайдера\n" +
+                            "Зайди в настройки → Провайдеры и выбери/настрой модель",
+                    isUser = false,
+                    status = MessageStatus.ERROR
+                )
+            )
+            binding.rvMessages.scrollToPosition(adapter.itemCount - 1)
+            return
+        }
 
         // Add user message to chat
         val userMessage = ChatMessage(
@@ -227,7 +334,7 @@ class ChatActivity : AppCompatActivity() {
         lifecycleScope.launch {
             val response = sendToGateway(text)
 
-            if (response != null) {
+            if (response != null && !response.startsWith("⚠")) {
                 adapter.addMessage(
                     ChatMessage(
                         text = response,
@@ -238,18 +345,14 @@ class ChatActivity : AppCompatActivity() {
                 binding.tvConnectionStatus.text = "● online"
                 binding.tvConnectionStatus.setTextColor(getColor(R.color.success_green))
             } else {
-                // Show last proxy error if available
-                val proxyErr = GatewayService.lastProxyError
-                val errMsg = if (proxyErr != null) {
-                    "⚠ Gateway error: $proxyErr\n" +
-                    "Проверь настройки провайдера"
-                } else {
-                    "⚠ Gateway не отвечает на :9123\n" +
-                    "Проверь что gateway запущен"
+                val errText = response ?: run {
+                    val proxyErr = GatewayService.lastProxyError
+                    if (proxyErr != null) "⚠ Gateway error: $proxyErr\nПроверь настройки провайдера"
+                    else "⚠ Gateway не отвечает на :9123\nПроверь что gateway запущен"
                 }
                 adapter.addMessage(
                     ChatMessage(
-                        text = errMsg,
+                        text = errText,
                         isUser = false,
                         status = MessageStatus.ERROR
                     )
@@ -259,7 +362,6 @@ class ChatActivity : AppCompatActivity() {
                 binding.tvConnectionStatus.setTextColor(getColor(R.color.error_red))
             }
 
-            // Scroll to bottom
             binding.rvMessages.scrollToPosition(adapter.itemCount - 1)
         }
     }
@@ -326,7 +428,8 @@ class ChatActivity : AppCompatActivity() {
                 if (result != null) result else responseText
             } else {
                 val errorText = conn.errorStream?.bufferedReader()?.readText() ?: "HTTP $responseCode"
-                "⚠ Gateway error ($responseCode): $errorText"
+                val cleanError = stripHtml(errorText).take(300)
+                "⚠ Gateway error ($responseCode): $cleanError"
             }
         } catch (e: java.net.ConnectException) {
             null // Connection refused — gateway not running
@@ -336,5 +439,14 @@ class ChatActivity : AppCompatActivity() {
             Log.e(TAG, "sendToGateway failed", e)
             null
         }
+    }
+
+    private fun stripHtml(raw: String): String {
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+            Html.fromHtml(raw, Html.FROM_HTML_MODE_LEGACY).toString().trim()
+        } else {
+            @Suppress("DEPRECATION")
+            Html.fromHtml(raw).toString().trim()
+        }.replace(Regex("\s+"), " ")
     }
 }

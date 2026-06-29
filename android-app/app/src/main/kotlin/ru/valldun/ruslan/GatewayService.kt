@@ -14,6 +14,7 @@ import android.os.Looper
 import android.os.PowerManager
 import android.util.Log
 import androidx.core.app.NotificationCompat
+import androidx.preference.PreferenceManager
 import com.chaquo.python.Python
 import com.chaquo.python.android.AndroidPlatform
 
@@ -90,20 +91,17 @@ class GatewayService : Service() {
         startHealthCheck()
 
         // Start Telegram bot if enabled in prefs
-        val tgPrefs = getSharedPreferences("ruslan_prefs", MODE_PRIVATE)
-        if (tgPrefs.getBoolean("telegram_enabled", false)) {
-            val tgToken = android.preference.PreferenceManager.getDefaultSharedPreferences(this)
-                .getString("telegram_token", "") ?: ""
+        val defaultPrefs = PreferenceManager.getDefaultSharedPreferences(this)
+        if (defaultPrefs.getBoolean("telegram_enabled", false)) {
+            val tgToken = defaultPrefs.getString("telegram_token", "") ?: ""
             if (tgToken.isNotEmpty()) {
-                val finalToken = tgToken
                 Thread {
                     try {
                         Thread.sleep(3000)
                         val py = Python.getInstance()
                         val module = py.getModule("ruslan_proxy")
-                        val tgUsers = android.preference.PreferenceManager.getDefaultSharedPreferences(this)
-                            .getString("telegram_users", "") ?: ""
-                        module.callAttr("start_telegram_bot", finalToken, tgUsers)
+                        val tgUsers = defaultPrefs.getString("telegram_users", "") ?: ""
+                        module.callAttr("start_telegram_bot", tgToken, tgUsers)
                         Logger.i(TAG, "Telegram bot auto-started from prefs")
                     } catch (e: Exception) {
                         Logger.e(TAG, "Telegram auto-start failed", e)

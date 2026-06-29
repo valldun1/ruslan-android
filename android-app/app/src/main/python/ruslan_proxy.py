@@ -88,6 +88,9 @@ _last_error = None
 _server_instance = None
 _server_thread = None
 
+# Browser-like User-Agent to avoid Cloudflare blocks on some providers
+USER_AGENT = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36"
+
 
 def _log(msg: str) -> None:
     if LOG_PATH:
@@ -374,6 +377,7 @@ class _Handler(http.server.BaseHTTPRequestHandler):
         url = _build_url(self.path, cfg)
         req = urllib.request.Request(url, data=request_body)
         req.add_header("Content-Type", "application/json")
+        req.add_header("User-Agent", USER_AGENT)
         api_key = cfg.get("apiKey", "")
         if style == "yandex":
             parts = api_key.split(":", 1)
@@ -528,20 +532,23 @@ _telegram_allowed_users = ""
 def start_telegram_bot(token: str, allowed_users: str = "") -> str:
     """Start Telegram bot polling. Called from Kotlin."""
     global _telegram_thread, _telegram_running, _telegram_bot_token, _telegram_allowed_users, _telegram_offset
-    _telegram_bot_token = token
+    if not token or not token.strip():
+        _log("Telegram: empty token, not starting")
+        return "error: empty token"
+    _telegram_bot_token = token.strip()
     _telegram_allowed_users = allowed_users
     _telegram_running = True
     _telegram_offset = 0
 
     if _telegram_thread and _telegram_thread.is_alive():
         return "already_running"
-
     def _poll():
         global _telegram_offset
         while _telegram_running:
             try:
                 url = f"https://api.telegram.org/bot{_telegram_bot_token}/getUpdates?offset={_telegram_offset}&timeout=10"
                 req = urllib.request.Request(url)
+                req.add_header("User-Agent", USER_AGENT)
                 resp = urllib.request.urlopen(req, timeout=15)
                 data = json.loads(resp.read())
                 updates = data.get("result", [])
@@ -592,6 +599,7 @@ def _ask_llm(text: str) -> str:
         }).encode()
         req = urllib.request.Request(url, data=body)
         req.add_header("Content-Type", "application/json")
+        req.add_header("User-Agent", USER_AGENT)
         api_key = cfg.get("apiKey", "")
         style = cfg.get("pathStyle", "openai")
         if style == "yandex":
@@ -609,15 +617,29 @@ def _ask_llm(text: str) -> str:
 
 
 def _send_telegram_message(chat_id: int, text: str) -> None:
-    """Send message via Telegram Bot API."""
-    try:
-        url = f"https://api.telegram.org/bot{_telegram_bot_token}/sendMessage"
-        body = json.dumps({"chat_id": chat_id, "text": text}).encode()
-        req = urllib.request.Request(url, data=body)
-        req.add_header("Content-Type", "application/json")
-        urllib.request.urlopen(req, timeout=10)
-    except Exception as e:
-        _log(f"Telegram send error: {e}")
+    """Send message via Telegram Bot API. Split long messages (>4096)."""
+    max_len = 4096
+    chunks = []
+    remaining = text
+    while len(remaining) > max_len:
+        # Prefer split on newline
+        split_pos = remaining.rfind('\n', 0, max_len)
+        if split_pos == -1:
+            split_pos = max_len
+        chunks.append(remaining[:split_pos])
+        remaining = remaining[split_pos:].lstrip()
+    chunks.append(remaining)
+
+    for chunk in chunks:
+        try:
+            url = f"https://api.telegram.org/bot{_telegram_bot_token}/sendMessage"
+            body = json.dumps({"chat_id": chat_id, "text": chunk}).encode()
+            req = urllib.request.Request(url, data=body)
+            req.add_header("Content-Type", "application/json")
+            req.add_header("User-Agent", USER_AGENT)
+            urllib.request.urlopen(req, timeout=10)
+        except Exception as e:
+            _log(f"Telegram send error: {e}")
 
 
 # Allow running standalone (for testing outside Chaquopy)

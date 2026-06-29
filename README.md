@@ -19,7 +19,8 @@
 | Функция | Описание |
 |---------|----------|
 | 🎮 **One APK** | Python 3.11 + Руслан в одном файле (Chaquopy) |
-| 🤖 **AI-агент** | DeepSeek, OpenAI, Anthropic, Gemini, OpenRouter |
+| 🤖 **AI-агент** | 15 провайдеров: OpenAI, Anthropic, Google, YandexGPT, GigaChat, Grok, DeepSeek, OpenRouter, Ollama |
+| 🎤 **Голосовой ввод** | Android SpeechRecognizer, без API-ключей |
 | 💬 **Telegram** | Полный gateway с голосовыми сообщениями |
 | 🔄 **Auto-restart** | При падении — восстановление за 5 сек |
 | 🔋 **Boot start** | Автозапуск при включении телефона |
