@@ -41,6 +41,14 @@
         <item name="colorOnSurface">@color/text_primary</item>
         <item name="colorOnSurfaceVariant">@color/text_secondary</item>
         <item name="android:fontFamily">monospace</item>
+        <item name="alertDialogTheme">@style/Theme.Ruslan.AlertDialog</item>
+        <item name="materialAlertDialogTheme">@style/Theme.Ruslan.AlertDialog</item>
+    </style>
+
+    <!-- AlertDialog with black button text -->
+    <style name="Theme.Ruslan.AlertDialog" parent="ThemeOverlay.Material3.Dialog.Alert">
+        <item name="buttonBarButtonStyle">@style/Widget.Ruslan.DialogButton</item>
+        <item name="android:buttonBarButtonStyle">@style/Widget.Ruslan.DialogButton</item>
     </style>
 
     <!-- Theme with ActionBar -->

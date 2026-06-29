@@ -359,7 +359,7 @@ class ChatActivity : AppCompatActivity() {
             }
             conn.doOutput = true
             conn.connectTimeout = 15000
-            conn.readTimeout = 60000  // longer for LLM responses
+            conn.readTimeout = 120000  // 2 min for LLM streaming
 
             // Build JSON body manually (no libs needed)
             val modelName = if (gatewayModel.isNotEmpty()) gatewayModel else "deepseek-chat"

@@ -483,7 +483,7 @@ def start_server(port: int = 9123, config_dir: str = "") -> str:
         return "already_running"
 
     try:
-        _server_instance = http.server.HTTPServer(("127.0.0.1", port), _Handler)
+        _server_instance = http.server.ThreadingHTTPServer(("127.0.0.1", port), _Handler)
         _server_thread = threading.Thread(target=_server_instance.serve_forever, daemon=True)
         _server_thread.start()
         _log(f"Proxy v3 started: {_config['provider']} -> {_config['baseUrl']} :{port}")

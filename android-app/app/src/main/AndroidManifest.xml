@@ -47,7 +47,7 @@
         <!-- Settings Activity -->
         <activity
             android:name=".SettingsActivity"
-            android:theme="@style/Theme.Ruslan"
+            android:theme="@style/Theme.Ruslan.Preference"
             android:parentActivityName=".MainActivity" />
 
         <!-- Provider Config -->

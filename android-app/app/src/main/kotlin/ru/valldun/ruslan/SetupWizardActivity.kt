@@ -103,8 +103,16 @@ class SetupWizardActivity : AppCompatActivity() {
                 put("model", builtIn?.defaultModel ?: "")
             }
             configFile.writeText(json.toString(2))
+            // Tell Python proxy to reload config
+            try {
+                if (com.chaquo.python.Python.isStarted()) {
+                    val py = com.chaquo.python.Python.getInstance()
+                    val result = py.getModule("ruslan_proxy").callAttr("reload_config").toString()
+                    Logger.i("SetupWizard", "Proxy reload: $result")
+                }
+            } catch (_: Exception) {}
         } catch (e: Exception) {
-            // Non-critical - user can reconfigure in settings
+            Logger.w("SetupWizard", "Config write error: ${e.message}")
         }
 
         // Mark first run as completed
