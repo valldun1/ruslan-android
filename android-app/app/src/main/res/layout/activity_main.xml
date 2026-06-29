@@ -134,11 +134,15 @@
                     android:gravity="center_horizontal"
                     android:padding="24dp">
 
-                    <ImageView
-                        android:layout_width="120dp"
-                        android:layout_height="120dp"
+                    <com.google.android.material.imageview.ShapeableImageView
+                        android:id="@+id/ivAvatar"
+                        android:layout_width="140dp"
+                        android:layout_height="140dp"
                         android:src="@drawable/ic_ruslan_avatar"
-                        android:contentDescription="@string/app_name" />
+                        android:contentDescription="@string/app_name"
+                        app:shapeAppearanceOverlay="@style/CircleImage"
+                        app:strokeColor="@color/accent_green"
+                        app:strokeWidth="2dp" />
 
                     <TextView
                         android:layout_width="wrap_content"
@@ -158,6 +162,7 @@
                         android:layout_marginTop="4dp" />
 
                     <TextView
+                        android:id="@+id/tvActiveModelBadge"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="DeepSeek v4 Flash"

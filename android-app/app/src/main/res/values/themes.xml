@@ -96,4 +96,10 @@
         <item name="thumbTint">@color/accent_green</item>
         <item name="trackTint">@color/bg_surface</item>
     </style>
+
+    <!-- Circular image shape -->
+    <style name="CircleImage">
+        <item name="cornerFamily">rounded</item>
+        <item name="cornerSize">50%</item>
+    </style>
 </resources>

@@ -1,9 +1,11 @@
 package ru.valldun.ruslan
 
+import android.app.ActivityManager
 import android.content.Intent
 import android.graphics.Color
 import android.net.Uri
 import android.os.Bundle
+import android.os.Debug
 import android.os.PowerManager
 import android.provider.Settings
 import android.widget.Toast
@@ -109,11 +111,23 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun updateStats() {
-        // Real JVM RAM usage (always available)
-        val runtime = Runtime.getRuntime()
-        val usedMb = (runtime.totalMemory() - runtime.freeMemory()) / (1024 * 1024)
-        val totalMb = runtime.totalMemory() / (1024 * 1024)
-        binding.tvRamUsage.text = "${usedMb}MB / ${totalMb}MB"
+        // Real app memory usage (PSS) as percentage of total device RAM
+        val memInfo = Debug.MemoryInfo()
+        Debug.getMemoryInfo(memInfo)
+        val appPssMb = memInfo.totalPss / 1024
+
+        val am = getSystemService(ACTIVITY_SERVICE) as ActivityManager
+        val deviceMem = ActivityManager.MemoryInfo()
+        am.getMemoryInfo(deviceMem)
+        val totalMb = deviceMem.totalMem / (1024 * 1024)
+        val percent = if (totalMb > 0) (appPssMb * 100 / totalMb).toInt() else 0
+
+        binding.tvRamUsage.text = "$percent%"
+        binding.tvRamUsage.setTextColor(when {
+            percent >= 50 -> ContextCompat.getColor(this, R.color.error_red)
+            percent >= 25 -> ContextCompat.getColor(this, R.color.warning_yellow)
+            else -> ContextCompat.getColor(this, R.color.accent_cyan)
+        })
 
         // Model name from config
         val pm = ProviderManager(this)
@@ -121,6 +135,9 @@ class MainActivity : AppCompatActivity() {
         binding.tvModelName.text = activeProvider?.let {
             "${it.name} / ${it.defaultModel}"
         } ?: "—"
+        binding.tvActiveModelBadge.text = activeProvider?.let {
+            "${it.name}"
+        } ?: "Не выбран провайдер"
         binding.tvSessionsCount.text = "${pm.getAllProviders().size}"
 
         // Get proxy status from the in-process flag (no HTTP needed)
