@@ -34,7 +34,7 @@ class WizardStepModelFragment : Fragment() {
 
     fun setProvider(provider: String) {
         providerId = provider
-        if (::binding.isInitialized) populateModels()
+        if (_binding != null) populateModels()
     }
 
     private fun populateModels() {
