@@ -1,6 +1,7 @@
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
+    id("com.chaquo.python")
 }
 
 android {
@@ -11,14 +12,20 @@ android {
         applicationId = "ru.valldun.ruslan"
         minSdk = 24
         targetSdk = 34
-        versionCode = 1
-        versionName = "0.20.0"
+        versionCode = 2
+        versionName = "0.21.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-        
-        // Only ARM64 for now (most modern phones)
+
+        // ARM64 + ARM32 (for older test devices)
         ndk {
             abiFilters.add("arm64-v8a")
+            abiFilters.add("armeabi-v7a")
+        }
+
+        // Chaquopy: Python 3.11
+        python {
+            version = "3.11"
         }
     }
 
@@ -48,16 +55,15 @@ android {
 
     buildFeatures {
         viewBinding = true
-    }
-
-    // Do not compress zst (already compressed)
-    aaptOptions {
-        noCompress("zst")
+        prefab = true
     }
 
     packaging {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
+        }
+        jniLibs {
+            useLegacyPackaging = true
         }
     }
 }
@@ -72,10 +78,6 @@ dependencies {
     implementation("androidx.preference:preference-ktx:1.2.1")
     implementation("androidx.viewpager2:viewpager2:1.0.0")
 
-    // Prefix extraction (zstd + tar)
-    implementation("com.github.luben:zstd-jni:1.5.6-9")
-    implementation("org.apache.commons:commons-compress:1.26.1")
-    
     // Testing
     testImplementation("junit:junit:4.13.2")
     androidTestImplementation("androidx.test.ext:junit:1.1.5")

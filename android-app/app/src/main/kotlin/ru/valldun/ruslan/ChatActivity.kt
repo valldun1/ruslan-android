@@ -185,7 +185,7 @@ class ChatActivity : AppCompatActivity() {
     private fun addWelcomeMessage() {
         adapter.addMessage(
             ChatMessage(
-                text = "> Руслан Agent v0.18.0\n" +
+                text = "> Руслан Agent v0.21.0\n" +
                         "> Терминал: ${gatewayUrl}\n" +
                         "> Введи команду или вопрос\n" +
                         ">\n" +
@@ -286,16 +286,34 @@ class ChatActivity : AppCompatActivity() {
             val responseCode = conn.responseCode
             if (responseCode == 200) {
                 val responseText = conn.inputStream.bufferedReader().readText()
-                // Try parsing as standard JSON first
+                // Try parsing as standard JSON first (non-streaming response)
                 try {
                     val json = org.json.JSONObject(responseText)
-                    json.getJSONArray("choices")
-                        .getJSONObject(0)
-                        .getJSONObject("message")
-                        .getString("content")
+                    if (json.has("choices")) {
+                        return@withContext json.getJSONArray("choices")
+                            .getJSONObject(0)
+                            .optJSONObject("message")
+                            ?.optString("content", "")
+                            ?: ""
+                    }
                 } catch (_: org.json.JSONException) {
-                    // Maybe SSE stream — return raw text (handled by caller)
-                    responseText
+                    // SSE stream — parse data: lines
+                    val content = StringBuilder()
+                    responseText.lines().forEach { line ->
+                        if (line.startsWith("data: ") && line != "data: [DONE]") {
+                            try {
+                                val data = org.json.JSONObject(line.removePrefix("data: "))
+                                val delta = data.optJSONArray("choices")
+                                    ?.optJSONObject(0)
+                                    ?.optJSONObject("delta")
+                                val text = delta?.optString("content", "")
+                                if (!text.isNullOrEmpty()) content.append(text)
+                            } catch (_: Exception) {
+                                // skip malformed SSE lines
+                            }
+                        }
+                    }
+                    if (content.isNotEmpty()) content.toString() else responseText
                 }
             } else {
                 val errorText = conn.errorStream?.bufferedReader()?.readText() ?: "HTTP $responseCode"

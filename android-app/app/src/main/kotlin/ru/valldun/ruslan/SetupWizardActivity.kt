@@ -75,9 +75,12 @@ class SetupWizardActivity : AppCompatActivity() {
             }
         } catch (e: Exception) {}
 
-        // Save provider config
+        // Save provider config — merge with built-in to preserve baseUrl/model
         val providerManager = ProviderManager(this)
         providerManager.initDefaults()
+
+        // Look up built-in config to get baseUrl and defaultModel
+        val builtIn = ProviderConfig.BUILT_IN.find { it.id == selectedProvider }
 
         val provider = ProviderConfig(
             id = selectedProvider,
@@ -92,6 +95,8 @@ class SetupWizardActivity : AppCompatActivity() {
                 else -> selectedProvider
             },
             apiKey = apiKey,
+            baseUrl = builtIn?.baseUrl ?: "",
+            defaultModel = builtIn?.defaultModel ?: "",
             isActive = true
         )
         providerManager.addOrUpdateProvider(provider)
