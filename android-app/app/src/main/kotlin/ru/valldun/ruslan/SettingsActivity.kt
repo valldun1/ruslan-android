@@ -42,6 +42,12 @@ class SettingsActivity : AppCompatActivity() {
                 true
             }
 
+            // Navigate to logs
+            findPreference<Preference>("logs")?.setOnPreferenceClickListener {
+                startActivity(Intent(requireContext(), LogsActivity::class.java))
+                true
+            }
+
             // Send log
             findPreference<Preference>("send_log")?.setOnPreferenceClickListener {
                 shareLog()
@@ -60,6 +66,31 @@ class SettingsActivity : AppCompatActivity() {
             findPreference<SwitchPreferenceCompat>("notifications")?.setOnPreferenceChangeListener { _, newValue ->
                 val enabled = newValue as Boolean
                 // TODO: wire notification toggle
+                true
+            }
+
+            // Telegram toggle
+            findPreference<SwitchPreferenceCompat>("telegram_enabled")?.setOnPreferenceChangeListener { _, newValue ->
+                val enabled = newValue as Boolean
+                val token = findPreference<androidx.preference.EditTextPreference>("telegram_token")?.text ?: ""
+                if (enabled && token.isNotEmpty()) {
+                    try {
+                        val py = com.chaquo.python.Python.getInstance()
+                        val module = py.getModule("ruslan_proxy")
+                        val users = findPreference<androidx.preference.EditTextPreference>("telegram_users")?.text ?: ""
+                        module.callAttr("start_telegram_bot", token, users)
+                        Logger.i("Settings", "Telegram bot started")
+                    } catch (e: Exception) {
+                        Logger.e("Settings", "Telegram start failed", e)
+                    }
+                } else if (!enabled) {
+                    try {
+                        val py = com.chaquo.python.Python.getInstance()
+                        val module = py.getModule("ruslan_proxy")
+                        module.callAttr("stop_telegram_bot")
+                        Logger.i("Settings", "Telegram bot stopped")
+                    } catch (_: Exception) {}
+                }
                 true
             }
 

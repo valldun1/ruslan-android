@@ -12,6 +12,42 @@ object Logger {
     private const val LOG_FILE_NAME = "ruslan.log"
     private var context: Context? = null
 
+    // In-memory ring buffer for LogsActivity
+    data class LogEntry(
+        val timestamp: String,
+        val level: String,
+        val tag: String,
+        val message: String
+    )
+
+    private val ringBuffer = object {
+        private val entries = mutableListOf<LogEntry>()
+        private val max = 500
+
+        @Synchronized
+        fun add(entry: LogEntry) {
+            entries.add(entry)
+            if (entries.size > max) {
+                entries.removeAt(0)
+            }
+        }
+
+        @Synchronized
+        fun getAll(): List<LogEntry> = entries.toList()
+
+        @Synchronized
+        fun clear() { entries.clear() }
+
+        @Synchronized
+        fun filter(level: String?): List<LogEntry> =
+            if (level == null || level == "ALL") entries.toList()
+            else entries.filter { it.level == level }
+    }
+
+    fun getRingBuffer(): List<LogEntry> = ringBuffer.getAll()
+    fun getRingBufferFiltered(level: String?): List<LogEntry> = ringBuffer.filter(level)
+    fun clearRingBuffer() = ringBuffer.clear()
+
     fun init(appContext: Context) {
         context = appContext.applicationContext
         // Write header with version info on first init
@@ -53,10 +89,13 @@ object Logger {
     }
 
     private fun writeToFile(level: String, tag: String, message: String) {
+        val timestamp = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date())
+        // Add to ring buffer
+        ringBuffer.add(LogEntry(timestamp, level, tag, message))
+        // Write to file
         try {
             val ctx = context ?: return
             val logFile = File(ctx.filesDir, LOG_FILE_NAME)
-            val timestamp = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date())
             FileWriter(logFile, true).use { writer ->
                 writer.append("[$timestamp] $level/$tag: $message\n")
             }

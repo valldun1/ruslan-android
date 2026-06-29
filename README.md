@@ -5,7 +5,7 @@
 [![Python](https://img.shields.io/badge/Chaquopy-Python%203.11-3776AB)](https://chaquo.com/chaquopy/)
 
 > **Ruslan Agent** — AI-агент на Android. Один APK, полная автономность, Telegram gateway.
-> **v0.18+:** Chaquopy edition — встроенный Python 3.11, без Termux, без распаковки при первом запуске.
+> **v0.23.0:** 15 провайдеров, экран логов, Telegram UI, YandexGPT, GigaChat.
 
 ## ⚡ Быстрый старт
 

@@ -94,4 +94,12 @@
     <string name="message_hint">$ введите команду...</string>
     <string name="today">Сегодня</string>
     <string name="back_arrow"><![CDATA[<]]></string>
+
+    <!-- Logs -->
+    <string name="logs_title">> ruslan logs</string>
+
+    <!-- Telegram -->
+    <string name="telegram_enabled">Включить бота</string>
+    <string name="telegram_token">Bot Token</string>
+    <string name="telegram_users">Разрешённые пользователи</string>
 </resources>

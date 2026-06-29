@@ -45,6 +45,40 @@ PROVIDERS = {
         "baseUrl": "https://api.anthropic.com",
         "model": "claude-sonnet-4-20250514",
     },
+    "yandex": {
+        "baseUrl": "https://llm.api.cloud.yandex.net/foundationModels/v1",
+        "model": "yandexgpt-lite",
+        "pathStyle": "yandex",
+    },
+    "glm": {
+        "baseUrl": "https://open.bigmodel.cn/api/paas/v4",
+        "model": "glm-5.2",
+    },
+    "qwen": {
+        "baseUrl": "https://dashscope.aliyuncs.com/compatible-mode/v1",
+        "model": "qwen-plus",
+    },
+    "gigachat": {
+        "baseUrl": "https://gigachat.devices.sberbank.ru/api/v1",
+        "model": "GigaChat-Max",
+        "pathStyle": "gigachat",
+    },
+    "grok": {
+        "baseUrl": "https://api.x.ai/v1",
+        "model": "grok-3-mini",
+    },
+    "mistral": {
+        "baseUrl": "https://api.mistral.ai/v1",
+        "model": "mistral-large-latest",
+    },
+    "perplexity": {
+        "baseUrl": "https://api.perplexity.ai",
+        "model": "sonar",
+    },
+    "ollama": {
+        "baseUrl": "http://localhost:11434/v1",
+        "model": "llama3.2",
+    },
 }
 
 _config = None
@@ -122,6 +156,10 @@ def _build_url(path: str, cfg: dict) -> str:
         elif path == "/v1/models":
             return f"{base}/v1beta/models?key={api_key}"
         return f"{base}{path}"
+    elif style == "yandex":
+        return f"{base}/completion"
+    elif style == "gigachat":
+        return f"{base}/chat/completions"
     else:
         if path == "/chat/completions":
             path = "/v1/chat/completions"
@@ -183,6 +221,101 @@ def _convert_google_response(google_resp: dict) -> dict:
     }
 
 
+def _convert_yandex_request(body: dict, cfg: dict) -> dict:
+    """Convert OpenAI-format request to YandexGPT format."""
+    messages = body.get("messages", [])
+    ya_messages = []
+    for msg in messages:
+        role = msg.get("role", "user")
+        text = msg.get("content", "")
+        if role == "system":
+            ya_messages.append({"role": "user", "text": text})
+        elif role == "user":
+            ya_messages.append({"role": "user", "text": text})
+        elif role == "assistant":
+            ya_messages.append({"role": "assistant", "text": text})
+    api_key = cfg.get("apiKey", "")
+    parts = api_key.split(":", 1)
+    folder_id = parts[0] if len(parts) > 1 else ""
+    model = cfg.get("model", "yandexgpt-lite")
+    return {
+        "modelUri": f"gpt://{folder_id}/{model}",
+        "completionOptions": {
+            "stream": False,
+            "maxTokens": body.get("max_tokens", 1024),
+        },
+        "messages": ya_messages,
+    }
+
+
+def _convert_yandex_response(ya_resp: dict) -> dict:
+    """Convert YandexGPT response to OpenAI-compatible format."""
+    alternatives = ya_resp.get("alternatives", [])
+    if not alternatives:
+        return {
+            "choices": [{
+                "index": 0,
+                "message": {"role": "assistant", "content": ""},
+                "finish_reason": "stop",
+            }]
+        }
+    alt = alternatives[0]
+    text = alt.get("message", {}).get("text", "")
+    status = alt.get("status", "ALTERNATIVE_STATUS_FINAL")
+    finish = "stop" if "FINAL" in status else "length"
+    return {
+        "choices": [{
+            "index": 0,
+            "message": {"role": "assistant", "content": text},
+            "finish_reason": finish,
+        }]
+    }
+
+
+def _convert_gigachat_request(body: dict) -> dict:
+    """Convert OpenAI-format request to GigaChat format."""
+    messages = body.get("messages", [])
+    gc_messages = []
+    for msg in messages:
+        role = msg.get("role", "user")
+        content = msg.get("content", "")
+        if role == "system":
+            gc_messages.append({"role": "system", "content": content})
+        elif role == "user":
+            gc_messages.append({"role": "user", "content": content})
+        elif role == "assistant":
+            gc_messages.append({"role": "assistant", "content": content})
+    return {
+        "model": body.get("model", "GigaChat-Max"),
+        "messages": gc_messages,
+        "temperature": body.get("temperature", 0.7),
+        "max_tokens": body.get("max_tokens", 1024),
+    }
+
+
+def _convert_gigachat_response(gc_resp: dict) -> dict:
+    """Convert GigaChat response to OpenAI-compatible format."""
+    choices = gc_resp.get("choices", [])
+    if not choices:
+        return {
+            "choices": [{
+                "index": 0,
+                "message": {"role": "assistant", "content": ""},
+                "finish_reason": "stop",
+            }]
+        }
+    ch = choices[0]
+    text = ch.get("message", {}).get("content", "")
+    finish = ch.get("finish_reason", "stop")
+    return {
+        "choices": [{
+            "index": 0,
+            "message": {"role": "assistant", "content": text},
+            "finish_reason": finish,
+        }]
+    }
+
+
 class _Handler(http.server.BaseHTTPRequestHandler):
     """HTTP request handler for the proxy."""
 
@@ -229,6 +362,12 @@ class _Handler(http.server.BaseHTTPRequestHandler):
         if style == "google":
             j = _convert_google_request(j)
             request_body = json.dumps(j).encode()
+        elif style == "yandex":
+            j = _convert_yandex_request(j, cfg)
+            request_body = json.dumps(j).encode()
+        elif style == "gigachat":
+            j = _convert_gigachat_request(j)
+            request_body = json.dumps(j).encode()
         else:
             request_body = json.dumps(j).encode()
 
@@ -236,7 +375,11 @@ class _Handler(http.server.BaseHTTPRequestHandler):
         req = urllib.request.Request(url, data=request_body)
         req.add_header("Content-Type", "application/json")
         api_key = cfg.get("apiKey", "")
-        if api_key and style != "google":
+        if style == "yandex":
+            parts = api_key.split(":", 1)
+            ya_key = parts[1] if len(parts) > 1 else api_key
+            req.add_header("Authorization", f"Api-Key {ya_key}")
+        elif api_key and style != "google":
             req.add_header("Authorization", f"Bearer {api_key}")
 
         try:
@@ -244,6 +387,14 @@ class _Handler(http.server.BaseHTTPRequestHandler):
             if style == "google":
                 raw = resp.read()
                 converted = _convert_google_response(json.loads(raw))
+                self._send_response(200, "application/json", json.dumps(converted).encode())
+            elif style == "yandex":
+                raw = resp.read()
+                converted = _convert_yandex_response(json.loads(raw))
+                self._send_response(200, "application/json", json.dumps(converted).encode())
+            elif style == "gigachat":
+                raw = resp.read()
+                converted = _convert_gigachat_response(json.loads(raw))
                 self._send_response(200, "application/json", json.dumps(converted).encode())
             elif want_stream:
                 self.send_response(200)
@@ -363,6 +514,110 @@ def get_status() -> dict:
         "uptime": _get_uptime(),
         "requests": _request_count,
     }
+
+
+# --- Telegram Bot Polling ---
+
+_telegram_thread = None
+_telegram_running = False
+_telegram_offset = 0
+_telegram_bot_token = ""
+_telegram_allowed_users = ""
+
+
+def start_telegram_bot(token: str, allowed_users: str = "") -> str:
+    """Start Telegram bot polling. Called from Kotlin."""
+    global _telegram_thread, _telegram_running, _telegram_bot_token, _telegram_allowed_users, _telegram_offset
+    _telegram_bot_token = token
+    _telegram_allowed_users = allowed_users
+    _telegram_running = True
+    _telegram_offset = 0
+
+    if _telegram_thread and _telegram_thread.is_alive():
+        return "already_running"
+
+    def _poll():
+        global _telegram_offset
+        while _telegram_running:
+            try:
+                url = f"https://api.telegram.org/bot{_telegram_bot_token}/getUpdates?offset={_telegram_offset}&timeout=10"
+                req = urllib.request.Request(url)
+                resp = urllib.request.urlopen(req, timeout=15)
+                data = json.loads(resp.read())
+                updates = data.get("result", [])
+                for upd in updates:
+                    _telegram_offset = upd["update_id"] + 1
+                    msg = upd.get("message", {})
+                    chat_id = msg.get("chat", {}).get("id")
+                    text = msg.get("text", "")
+                    username = msg.get("from", {}).get("username", "")
+                    user_id = str(msg.get("from", {}).get("id", ""))
+                    # Check allowed users
+                    if _telegram_allowed_users:
+                        allowed = [u.strip().lstrip("@") for u in _telegram_allowed_users.split(",")]
+                        if username not in allowed and user_id not in allowed:
+                            continue
+                    # Forward to LLM
+                    if text and chat_id:
+                        llm_resp = _ask_llm(text)
+                        _send_telegram_message(chat_id, llm_resp)
+            except Exception as e:
+                _log(f"Telegram poll error: {e}")
+                time.sleep(5)
+
+    _telegram_thread = threading.Thread(target=_poll, daemon=True)
+    _telegram_thread.start()
+    _log(f"Telegram bot started, allowed: {allowed_users}")
+    return "ok"
+
+
+def stop_telegram_bot() -> str:
+    """Stop Telegram bot polling."""
+    global _telegram_running
+    _telegram_running = False
+    return "ok"
+
+
+def _ask_llm(text: str) -> str:
+    """Send text to configured LLM and return response."""
+    cfg = _config
+    if not cfg:
+        return "⚠ LLM не настроен"
+    try:
+        url = _build_url("/v1/chat/completions", cfg)
+        body = json.dumps({
+            "model": cfg.get("model", ""),
+            "messages": [{"role": "user", "content": text}],
+            "stream": False,
+        }).encode()
+        req = urllib.request.Request(url, data=body)
+        req.add_header("Content-Type", "application/json")
+        api_key = cfg.get("apiKey", "")
+        style = cfg.get("pathStyle", "openai")
+        if style == "yandex":
+            parts = api_key.split(":", 1)
+            ya_key = parts[1] if len(parts) > 1 else api_key
+            req.add_header("Authorization", f"Api-Key {ya_key}")
+        elif api_key and style != "google":
+            req.add_header("Authorization", f"Bearer {api_key}")
+        resp = urllib.request.urlopen(req, timeout=60)
+        raw = resp.read()
+        j = json.loads(raw)
+        return j.get("choices", [{}])[0].get("message", {}).get("content", "пустой ответ")
+    except Exception as e:
+        return f"⚠ Ошибка: {e}"
+
+
+def _send_telegram_message(chat_id: int, text: str) -> None:
+    """Send message via Telegram Bot API."""
+    try:
+        url = f"https://api.telegram.org/bot{_telegram_bot_token}/sendMessage"
+        body = json.dumps({"chat_id": chat_id, "text": text}).encode()
+        req = urllib.request.Request(url, data=body)
+        req.add_header("Content-Type", "application/json")
+        urllib.request.urlopen(req, timeout=10)
+    except Exception as e:
+        _log(f"Telegram send error: {e}")
 
 
 # Allow running standalone (for testing outside Chaquopy)

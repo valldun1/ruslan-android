@@ -34,9 +34,38 @@
     </PreferenceCategory>
 
     <PreferenceCategory
+        android:title="# TELEGRAM"
+        app:iconSpaceReserved="false">
+
+        <SwitchPreferenceCompat
+            android:key="telegram_enabled"
+            android:title="Включить бота"
+            android:summary="Получать сообщения через Telegram"
+            android:icon="@drawable/ic_telegram"
+            android:defaultValue="false" />
+
+        <EditTextPreference
+            android:key="telegram_token"
+            android:title="Bot Token"
+            android:summary="Токен от @BotFather"
+            android:icon="@drawable/ic_telegram" />
+
+        <EditTextPreference
+            android:key="telegram_users"
+            android:title="Разрешённые пользователи"
+            android:summary="@username или ID через запятую"
+            android:icon="@drawable/ic_profile" />
+    </PreferenceCategory>
+
+    <PreferenceCategory
         android:title="# СИСТЕМА"
         app:iconSpaceReserved="false">
 
+        <Preference
+            android:key="logs"
+            android:title="> Логи"
+            android:summary="Просмотр логов в реальном времени"
+            android:icon="@drawable/ic_code" />
         <Preference
             android:key="send_log"
             android:title="Отправить лог"

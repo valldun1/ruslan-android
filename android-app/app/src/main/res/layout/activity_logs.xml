@@ -1,0 +1,130 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="@color/bg_primary">
+
+    <!-- Header -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="48dp"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:paddingHorizontal="12dp"
+        android:background="@color/bg_surface">
+
+        <ImageButton
+            android:id="@+id/btnBack"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:src="@drawable/ic_menu"
+            android:contentDescription="@string/back"
+            app:tint="@color/text_secondary" />
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="> ruslan logs"
+            android:textColor="@color/accent_green"
+            android:textSize="14sp"
+            android:fontFamily="monospace"
+            android:layout_marginStart="8dp" />
+
+        <TextView
+            android:id="@+id/tvLogCount"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="[0]"
+            android:textColor="@color/text_tertiary"
+            android:textSize="12sp"
+            android:fontFamily="monospace" />
+    </LinearLayout>
+
+    <!-- Filter buttons -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="40dp"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:paddingHorizontal="12dp"
+        android:background="@color/bg_card">
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnFilterAll"
+            android:layout_width="wrap_content"
+            android:layout_height="32dp"
+            android:text="ALL"
+            android:textSize="11sp"
+            style="@style/Widget.Ruslan.Button.Secondary"
+            android:paddingHorizontal="12dp" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnFilterWarn"
+            android:layout_width="wrap_content"
+            android:layout_height="32dp"
+            android:text="WARN"
+            android:textSize="11sp"
+            style="@style/Widget.Ruslan.Button.Secondary"
+            android:paddingHorizontal="12dp"
+            android:layout_marginStart="8dp" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnFilterError"
+            android:layout_width="wrap_content"
+            android:layout_height="32dp"
+            android:text="ERR"
+            android:textSize="11sp"
+            style="@style/Widget.Ruslan.Button.Secondary"
+            android:paddingHorizontal="12dp"
+            android:layout_marginStart="8dp" />
+
+        <View
+            android:layout_width="0dp"
+            android:layout_height="0dp"
+            android:layout_weight="1" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnShare"
+            android:layout_width="wrap_content"
+            android:layout_height="32dp"
+            android:text="share"
+            android:textSize="11sp"
+            style="@style/Widget.Ruslan.Button.Secondary"
+            android:paddingHorizontal="12dp" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnClear"
+            android:layout_width="wrap_content"
+            android:layout_height="32dp"
+            android:text="clear"
+            android:textSize="11sp"
+            style="@style/Widget.Ruslan.Button.Secondary"
+            android:paddingHorizontal="12dp"
+            android:layout_marginStart="8dp" />
+    </LinearLayout>
+
+    <!-- Log list -->
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/rvLogs"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:padding="8dp" />
+
+    <!-- Status bar -->
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="20dp"
+        android:background="@color/bg_surface"
+        android:text="[logs] auto-refresh 1s"
+        android:textColor="@color/text_tertiary"
+        android:textSize="10sp"
+        android:fontFamily="monospace"
+        android:gravity="center_vertical"
+        android:paddingStart="12dp" />
+
+</LinearLayout>
