@@ -100,7 +100,7 @@ class SetupWizardActivity : AppCompatActivity() {
                 put("provider", selectedProvider)
                 put("apiKey", apiKey)
                 put("baseUrl", "")
-                put("model", "")
+                put("model", builtIn?.defaultModel ?: "")
             }
             configFile.writeText(json.toString(2))
         } catch (e: Exception) {
