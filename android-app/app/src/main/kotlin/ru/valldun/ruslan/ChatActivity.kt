@@ -185,7 +185,7 @@ class ChatActivity : AppCompatActivity() {
     private fun addWelcomeMessage() {
         adapter.addMessage(
             ChatMessage(
-                text = "> Руслан Agent v0.21.0\n" +
+                text = "> Руслан Agent v${BuildConfig.VERSION_NAME}\n" +
                         "> Терминал: ${gatewayUrl}\n" +
                         "> Введи команду или вопрос\n" +
                         ">\n" +

@@ -55,6 +55,16 @@ class SettingsActivity : AppCompatActivity() {
                 prefs.edit().putBoolean(BootReceiver.KEY_AUTO_START, enabled).apply()
                 true
             }
+
+            // Notifications preference
+            findPreference<SwitchPreferenceCompat>("notifications")?.setOnPreferenceChangeListener { _, newValue ->
+                val enabled = newValue as Boolean
+                // TODO: wire notification toggle
+                true
+            }
+
+            // About — show version from BuildConfig
+            findPreference<Preference>("about")?.summary = "Руслан Agent v${BuildConfig.VERSION_NAME}"
         }
 
         private fun shareLog() {
@@ -70,7 +80,7 @@ class SettingsActivity : AppCompatActivity() {
                     type = "text/plain"
                     putExtra(Intent.EXTRA_STREAM, uri)
                     putExtra(Intent.EXTRA_SUBJECT, "Ruslan Agent Log")
-                    putExtra(Intent.EXTRA_TEXT, "Лог-файл Ruslan Agent v0.17.0\nУстройство: ${android.os.Build.MODEL}\nAndroid: ${android.os.Build.VERSION.RELEASE}")
+                    putExtra(Intent.EXTRA_TEXT, "Лог-файл Руслан Agent v${BuildConfig.VERSION_NAME}\nУстройство: ${android.os.Build.MODEL}\nAndroid: ${android.os.Build.VERSION.RELEASE}")
                     addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                 }
                 startActivity(Intent.createChooser(intent, "Отправить лог"))

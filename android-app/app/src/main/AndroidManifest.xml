@@ -24,9 +24,7 @@
         android:theme="@style/Theme.Ruslan"
         android:extractNativeLibs="true"
         android:largeHeap="true"
-        android:networkSecurityConfig="@xml/network_security_config"
-        android:usesCleartextTraffic="true">
-
+        android:networkSecurityConfig="@xml/network_security_config">
         <!-- Main Activity -->
         <activity
             android:name=".MainActivity"

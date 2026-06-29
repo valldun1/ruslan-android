@@ -12,41 +12,6 @@
             android:summary="DeepSeek, OpenAI, GLM, Qwen и другие"
             android:icon="@drawable/ic_model"
             app:allowDividerBelow="true" />
-
-        <Preference
-            android:key="active_model"
-            android:title="Модель"
-            android:summary="deepseek-chat"
-            android:icon="@drawable/ic_cube"
-            app:allowDividerBelow="true" />
-    </PreferenceCategory>
-
-    <PreferenceCategory
-        android:title="# ИНТЕГРАЦИИ"
-        app:iconSpaceReserved="false">
-
-        <Preference
-            android:key="telegram"
-            android:title="Telegram Bot"
-            android:summary="Токен и настройки бота"
-            android:icon="@drawable/ic_telegram" />
-
-        <Preference
-            android:key="voice_stt"
-            android:title="Голос (STT)"
-            android:summary="Распознавание речи"
-            android:icon="@drawable/ic_microphone" />
-    </PreferenceCategory>
-
-    <PreferenceCategory
-        android:title="# ОФОРМЛЕНИЕ"
-        app:iconSpaceReserved="false">
-
-        <Preference
-            android:key="appearance"
-            android:title="Терминал"
-            android:summary="Стиль как на ruslan.team"
-            android:icon="@drawable/ic_palette" />
     </PreferenceCategory>
 
     <PreferenceCategory
@@ -81,14 +46,8 @@
         <Preference
             android:key="about"
             android:title="О приложении"
-            android:summary="v0.17.0 — Руслан Agent"
+            android:summary="Руслан Agent"
             android:icon="@drawable/ic_info" />
-
-        <Preference
-            android:key="system_info"
-            android:title="Диагностика"
-            android:summary="Логи, состояние, тест API"
-            android:icon="@drawable/ic_code" />
     </PreferenceCategory>
 
 </PreferenceScreen>
