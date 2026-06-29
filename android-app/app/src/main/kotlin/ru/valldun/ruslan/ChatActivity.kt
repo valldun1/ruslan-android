@@ -287,14 +287,16 @@ class ChatActivity : AppCompatActivity() {
             if (responseCode == 200) {
                 val responseText = conn.inputStream.bufferedReader().readText()
                 // Try parsing as standard JSON first (non-streaming response)
-                try {
+                val result = try {
                     val json = org.json.JSONObject(responseText)
                     if (json.has("choices")) {
-                        return@withContext json.getJSONArray("choices")
+                        json.getJSONArray("choices")
                             .getJSONObject(0)
                             .optJSONObject("message")
                             ?.optString("content", "")
                             ?: ""
+                    } else {
+                        null
                     }
                 } catch (_: org.json.JSONException) {
                     // SSE stream — parse data: lines
@@ -313,8 +315,9 @@ class ChatActivity : AppCompatActivity() {
                             }
                         }
                     }
-                    if (content.isNotEmpty()) content.toString() else responseText
+                    if (content.isNotEmpty()) content.toString() else null
                 }
+                if (result != null) result else responseText
             } else {
                 val errorText = conn.errorStream?.bufferedReader()?.readText() ?: "HTTP $responseCode"
                 "⚠ Gateway error ($responseCode): $errorText"
