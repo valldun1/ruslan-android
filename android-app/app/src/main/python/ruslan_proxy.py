@@ -15,34 +15,34 @@ import sys
 import time
 import threading
 from pathlib import Path
-
-# --- Global state ---
-CONFIG_PATH = None
-LOG_PATH = None
 PROVIDERS = {
     "opencode-go": {
-        "baseUrl": "https://opencode.ai/zen/go/v1",
+        "baseUrl": "https://opencode.ai/zen/go",
         "model": "deepseek-v4-flash",
     },
     "deepseek": {
-        "baseUrl": "https://api.deepseek.com/v1",
+        "baseUrl": "https://api.deepseek.com",
+        "model": "deepseek-chat",
+    },
+    "deepseek-flash": {
+        "baseUrl": "https://api.deepseek.com",
         "model": "deepseek-chat",
     },
     "openai": {
-        "baseUrl": "https://api.openai.com/v1",
+        "baseUrl": "https://api.openai.com",
         "model": "gpt-4o-mini",
     },
     "openrouter": {
-        "baseUrl": "https://openrouter.ai/api/v1",
+        "baseUrl": "https://openrouter.ai/api",
         "model": "deepseek/deepseek-chat",
     },
     "google": {
-        "baseUrl": "https://generativelanguage.googleapis.com/v1beta",
+        "baseUrl": "https://generativelanguage.googleapis.com",
         "model": "gemini-2.0-flash",
         "pathStyle": "google",
     },
     "anthropic": {
-        "baseUrl": "https://api.anthropic.com/v1",
+        "baseUrl": "https://api.anthropic.com",
         "model": "claude-sonnet-4-20250514",
     },
 }
@@ -111,20 +111,24 @@ def _get_uptime() -> str:
 
 
 def _build_url(path: str, cfg: dict) -> str:
-    base = cfg["baseUrl"]
+    base = cfg["baseUrl"].rstrip('/')
     model = cfg["model"]
     api_key = cfg["apiKey"]
     style = cfg.get("pathStyle", "openai")
 
     if style == "google":
         if path in ("/v1/chat/completions", "/chat/completions"):
-            return f"{base}/models/{model}:generateContent?key={api_key}"
+            return f"{base}/v1beta/models/{model}:generateContent?key={api_key}"
         elif path == "/v1/models":
-            return f"{base}/models?key={api_key}"
+            return f"{base}/v1beta/models?key={api_key}"
         return f"{base}{path}"
     else:
         if path == "/chat/completions":
             path = "/v1/chat/completions"
+        # Deduplicate version prefix if base already has it (e.g. base=/v1, path=/v1/...)
+        base_last = base.rsplit('/', 1)[-1]
+        if base_last and path.startswith('/' + base_last):
+            path = path[len(base_last) + 1:]  # remove e.g. /v1 from path start
         return f"{base}{path}"
 
 

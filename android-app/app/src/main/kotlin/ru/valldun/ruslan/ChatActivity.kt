@@ -42,21 +42,21 @@ class ChatActivity : AppCompatActivity() {
     }
 
     private fun loadGatewayConfig() {
-        // Chaquopy: config is in app's private files as JSON (ruslan-provider.json)
+        // Gateway is ALWAYS at 127.0.0.1:9123 (local proxy, not the upstream provider URL)
+        // gatewayUrl stays at default "http://127.0.0.1:9123"
+
+        // Try to read apiKey from provider config for Authorization header
         try {
             val configFile = java.io.File("${filesDir.absolutePath}/hermes/ruslan-provider.json")
             if (configFile.exists()) {
                 val text = configFile.readText()
                 val json = org.json.JSONObject(text)
-                if (json.has("baseUrl") && !json.isNull("baseUrl")) {
-                    gatewayUrl = json.getString("baseUrl").trimEnd('/')
-                }
                 if (json.has("apiKey") && !json.isNull("apiKey")) {
                     gatewayToken = json.getString("apiKey")
                 }
             }
         } catch (e: Exception) {
-            // Use defaults
+            // Use default token
         }
         // Also try .env fallback for backward compat
         if (gatewayToken.isEmpty()) {
@@ -266,7 +266,7 @@ class ChatActivity : AppCompatActivity() {
 
     private suspend fun sendToGateway(message: String): String? = withContext(Dispatchers.IO) {
         try {
-            val url = URL("${gatewayUrl}/v1/chat/completions")
+            val url = URL("${gatewayUrl}/chat/completions")
             val conn = url.openConnection() as HttpURLConnection
             conn.requestMethod = "POST"
             conn.setRequestProperty("Content-Type", "application/json")

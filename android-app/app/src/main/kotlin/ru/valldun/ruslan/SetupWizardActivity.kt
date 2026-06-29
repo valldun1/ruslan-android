@@ -47,7 +47,6 @@ class SetupWizardActivity : AppCompatActivity() {
         // Collect data from wizard fragments
         var selectedProvider = "deepseek"
         var apiKey = ""
-        var botToken = ""
 
         // Try to read Step 2 (provider selection)
         try {
@@ -64,14 +63,6 @@ class SetupWizardActivity : AppCompatActivity() {
             val step3 = adapter.getFragmentAt(2)
             if (step3 is WizardStep3Fragment) {
                 apiKey = step3.getApiKey()
-            }
-        } catch (e: Exception) {}
-
-        // Try to read Step 4 (Bot token)
-        try {
-            val step4 = adapter.getFragmentAt(3)
-            if (step4 is WizardStep4Fragment) {
-                botToken = step4.getBotToken()
             }
         } catch (e: Exception) {}
 
